@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="ownpdf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#ownpdf-grad)"/>
+  <!-- Folded Document Outline -->
+  <path d="M7 6.5C7 5.67 7.67 5 8.5 5H18.5L24 10.5V25.5C24 26.33 23.33 27 22.5 27H8.5C7.67 27 7 26.33 7 25.5V6.5Z" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Fold Corner -->
+  <path d="M18 5V11H24" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Privacy Padlock Shackle -->
+  <path d="M13 17V15.5C13 14.12 14.12 13 15.5 13C16.88 13 18 14.12 18 15.5V17" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Privacy Padlock Body -->
+  <rect x="11.5" y="17" width="8" height="6" rx="1.5" fill="#FFFFFF"/>
+  <!-- Keyhole Slot -->
+  <circle cx="15.5" cy="19.5" r="0.9" fill="#4F46E5"/>
+  <path d="M15.5 20.2V21.6" stroke="#4F46E5" stroke-width="1" stroke-linecap="round"/>
+</svg>
