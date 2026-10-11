@@ -64,15 +64,12 @@ interface SessionContextType {
 const SessionContext = createContext<SessionContextType | null>(null);
 
 function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   try {
     const saved = localStorage.getItem('ownpdf_theme');
     if (saved === 'light' || saved === 'dark') return saved;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
   } catch {}
-  return 'dark';
+  return 'light';
 }
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
