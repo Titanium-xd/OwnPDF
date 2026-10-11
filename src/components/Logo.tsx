@@ -29,10 +29,12 @@ export const Logo: React.FC<LogoProps> = ({
     lg: 'w-11 h-11 sm:w-13 sm:h-13',
   };
 
+  const mascotSrc = `${import.meta.env.BASE_URL}ownpdf-mascot.png`;
+
   if (!withContainer) {
     return (
       <img
-        src="/ownpdf-mascot.png"
+        src={mascotSrc}
         alt="OwnPDF Mascot"
         className={`${imageSizeClasses[size]} object-contain select-none ${className}`}
         loading="eager"
@@ -46,7 +48,7 @@ export const Logo: React.FC<LogoProps> = ({
       aria-label="OwnPDF Mascot"
     >
       <img
-        src="/ownpdf-mascot.png"
+        src={mascotSrc}
         alt="OwnPDF Mascot"
         className="w-full h-full object-contain select-none"
         loading="eager"

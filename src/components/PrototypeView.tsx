@@ -35,7 +35,7 @@ export const PrototypeView: React.FC<{ onProceedToApp: () => void }> = ({ onProc
     addLog('Fetching synthetic fixture: fixture-encrypted-aes256.pdf...', 'info');
 
     try {
-      const res = await fetch('/fixtures/fixture-encrypted-aes256.pdf');
+      const res = await fetch(`${import.meta.env.BASE_URL}fixtures/fixture-encrypted-aes256.pdf`);
       if (!res.ok) throw new Error(`HTTP ${res.status} fetching fixture`);
       const buffer = await res.arrayBuffer();
       const inputBytes = new Uint8Array(buffer);
@@ -73,7 +73,7 @@ export const PrototypeView: React.FC<{ onProceedToApp: () => void }> = ({ onProc
     addLog('Fetching encrypted fixture to test INCORRECT password handling...', 'info');
 
     try {
-      const res = await fetch('/fixtures/fixture-encrypted-aes256.pdf');
+      const res = await fetch(`${import.meta.env.BASE_URL}fixtures/fixture-encrypted-aes256.pdf`);
       const buffer = await res.arrayBuffer();
       const inputBytes = new Uint8Array(buffer);
 
@@ -97,7 +97,7 @@ export const PrototypeView: React.FC<{ onProceedToApp: () => void }> = ({ onProc
     addLog('Fetching unencrypted fixture: fixture-unencrypted.pdf...', 'info');
 
     try {
-      const res = await fetch('/fixtures/fixture-unencrypted.pdf');
+      const res = await fetch(`${import.meta.env.BASE_URL}fixtures/fixture-unencrypted.pdf`);
       const buffer = await res.arrayBuffer();
       const inputBytes = new Uint8Array(buffer);
       addLog(`Loaded unencrypted fixture (${inputBytes.byteLength} bytes).`, 'info');

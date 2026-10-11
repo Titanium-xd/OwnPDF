@@ -2,7 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure the worker URL to point to our local static asset in public/
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.mjs`;
 }
 
 export interface RenderPageOptions {

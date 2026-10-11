@@ -10,7 +10,8 @@ async function getQpdf() {
     qpdfInstance = await createModule({
       locateFile: (path: string = '') => {
         if (path.endsWith('.wasm')) {
-          return '/qpdf.wasm';
+          const base = import.meta.env.BASE_URL || '/';
+          return `${base}qpdf.wasm`;
         }
         return path;
       },
