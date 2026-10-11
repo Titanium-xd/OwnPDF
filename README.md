@@ -9,8 +9,6 @@
   *A blazing-fast, privacy-first PDF utility suite powered by WebAssembly. Unlock, protect, merge, split, organize, convert, and inspect documents 100% in your browser.*
 
   <p align="center">
-    <a href="https://github.com/Titanium-xd/OwnPDF/stargazers"><img src="https://img.shields.io/github/stars/Titanium-xd/OwnPDF?color=0284c7&style=for-the-badge" alt="Stars" /></a>
-    <a href="https://github.com/Titanium-xd/OwnPDF/network/members"><img src="https://img.shields.io/github/forks/Titanium-xd/OwnPDF?color=38bdf8&style=for-the-badge" alt="Forks" /></a>
     <a href="https://github.com/Titanium-xd/OwnPDF/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0ea5e9?style=for-the-badge" alt="License" /></a>
     <a href="https://github.com/Titanium-xd/OwnPDF"><img src="https://img.shields.io/badge/Zero_Uploads-100%25_Local-10b981?style=for-the-badge" alt="Zero Uploads" /></a>
   </p>
