@@ -83,9 +83,9 @@ export const Dropzone: React.FC = () => {
           <UploadCloud className="w-8 h-8" />
         </div>
 
-        <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+        <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
           Drop your PDF or image files here
-        </h3>
+        </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md">
           Drag and drop files, or <span className="text-sky-600 dark:text-sky-400 font-semibold underline underline-offset-2">browse from your device</span>.
         </p>

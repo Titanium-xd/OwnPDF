@@ -164,9 +164,9 @@ export const ToolGrid: React.FC = () => {
                 )}
               </div>
 
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition">
                 {tool.name}
-              </h4>
+              </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
                 {tool.description}
               </p>

@@ -67,9 +67,9 @@ const MainAppContent: React.FC = () => {
                 <span>100% client-side • All processing stays on your device</span>
               </div>
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
-                Your PDFs. Your device.{' '}
+                Free Private PDF Tools.{' '}
                 <span className="bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-500 dark:from-sky-400 dark:via-sky-300 dark:to-cyan-400 bg-clip-text text-transparent">
-                  Your privacy.
+                  Your device. Your privacy.
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto">
@@ -86,9 +86,9 @@ const MainAppContent: React.FC = () => {
             {/* Categorized Tools Grid */}
             <div className="space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60">
               <div className="text-center space-y-1">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   Comprehensive PDF Toolkit
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Select any tool below to begin processing your documents.
                 </p>
