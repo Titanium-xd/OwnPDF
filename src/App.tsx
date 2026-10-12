@@ -19,6 +19,12 @@ import { OrganizeTool } from './components/tools/OrganizeTool';
 import { ImagesToPdfTool } from './components/tools/ImagesToPdfTool';
 import { CompressTool } from './components/tools/CompressTool';
 import { InspectTool } from './components/tools/InspectTool';
+import { RotateTool } from './components/tools/RotateTool';
+import { PageNumbersTool } from './components/tools/PageNumbersTool';
+import { WatermarkTool } from './components/tools/WatermarkTool';
+import { PdfToImagesTool } from './components/tools/PdfToImagesTool';
+import { ExtractTextTool } from './components/tools/ExtractTextTool';
+import { CropTool } from './components/tools/CropTool';
 
 const MainAppContent: React.FC = () => {
   const { viewMode, setViewMode, activeTool, isNotFound } = useSession();
@@ -45,10 +51,23 @@ const MainAppContent: React.FC = () => {
         return <CompressTool />;
       case 'inspect':
         return <InspectTool />;
+      case 'rotate':
+        return <RotateTool />;
+      case 'page-numbers':
+        return <PageNumbersTool />;
+      case 'watermark':
+        return <WatermarkTool />;
+      case 'pdf-to-images':
+        return <PdfToImagesTool />;
+      case 'extract-text':
+        return <ExtractTextTool />;
+      case 'crop':
+        return <CropTool />;
       default:
         return null;
     }
   };
+
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors">

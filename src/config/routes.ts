@@ -6,7 +6,14 @@ export type ToolId =
   | 'organize'
   | 'images'
   | 'compress'
-  | 'inspect';
+  | 'inspect'
+  | 'rotate'
+  | 'page-numbers'
+  | 'watermark'
+  | 'pdf-to-images'
+  | 'extract-text'
+  | 'crop';
+
 
 export interface ToolRoute {
   toolId: ToolId;
@@ -346,7 +353,236 @@ export const toolRoutes: ToolRoute[] = [
     ],
     relatedToolIds: ['unlock', 'protect', 'compress'],
   },
+  {
+    toolId: 'rotate',
+    slug: 'rotate',
+    name: 'Rotate PDF',
+    title: 'Rotate PDF Online — Free, Permanent & On-Device — OwnPDF',
+    metaDescription:
+      'Rotate specific pages or entire PDF files by 90, 180, or 270 degrees locally in your browser. Clean, private PDF rotation with zero server uploads.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}rotate/`,
+    h1: 'Rotate PDF Pages Online',
+    shortDescription:
+      'Rotate misoriented scans or individual pages by 90°, 180°, or 270° clockwise with instant visual previews completely on your device.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Choose PDF File',
+        desc: 'Select or drag your PDF into the rotation workspace.',
+      },
+      {
+        step: 2,
+        title: 'Set Rotation',
+        desc: 'Choose rotation angle (90°, 180°, or 270°) and select all pages or a custom page range.',
+      },
+      {
+        step: 3,
+        title: 'Apply & Save',
+        desc: 'Click "Rotate PDF" to permanently adjust page orientation and download your modified document.',
+      },
+    ],
+    limitations: [
+      'Adjusts the standard PDF rotation dictionary without rasterizing or altering vector text streams.',
+      'Password-protected documents must be unlocked before rotating.',
+    ],
+    privacyNotes: [
+      'Page rotation executes strictly in browser memory using pdf-lib.',
+      'No files or pages are ever uploaded to any cloud server.',
+    ],
+    relatedToolIds: ['organize', 'crop', 'split'],
+  },
+  {
+    toolId: 'page-numbers',
+    slug: 'page-numbers',
+    name: 'Add Page Numbers',
+    title: 'Add Page Numbers to PDF Online — Free & Customizable — OwnPDF',
+    metaDescription:
+      'Insert page numbers into PDF documents locally. Customize format, position, font size, margins, and page ranges with zero server uploads.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}page-numbers/`,
+    h1: 'Add Page Numbers to PDF Documents',
+    shortDescription:
+      'Stamp clean, professional page numbering onto PDF sheets with full control over position (top/bottom, left/center/right), formatting, and margins.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload Document',
+        desc: 'Select the PDF document you wish to number.',
+      },
+      {
+        step: 2,
+        title: 'Configure Numbering',
+        desc: 'Choose position, numbering format ("Page N of M", "N / M", or "N"), start number, and margin.',
+      },
+      {
+        step: 3,
+        title: 'Generate Numbered PDF',
+        desc: 'Click "Add Page Numbers" to stamp the document and download the finished file.',
+      },
+    ],
+    limitations: [
+      'Stamps text onto the foreground of each page; ensure chosen margins do not overlap critical content.',
+      'Supports standard Latin numerical formats and standard PDF typefaces.',
+    ],
+    privacyNotes: [
+      'Text layout and stamping are computed entirely inside your browser.',
+      'Zero document contents leave your computer.',
+    ],
+    relatedToolIds: ['watermark', 'organize', 'merge'],
+  },
+  {
+    toolId: 'watermark',
+    slug: 'watermark',
+    name: 'Add Watermark',
+    title: 'Add Watermark to PDF Online — Text & Image Watermarks — OwnPDF',
+    metaDescription:
+      'Apply text or logo image watermarks to PDF files locally. Configure opacity, rotation, size, and page range with zero server uploads.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}watermark/`,
+    h1: 'Add Watermark to PDF Online',
+    shortDescription:
+      'Stamp custom confidential text or transparent PNG/JPEG logo watermarks across PDF pages with full control over opacity, angle, and positioning.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF',
+        desc: 'Upload the document you want to watermark.',
+      },
+      {
+        step: 2,
+        title: 'Design Watermark',
+        desc: 'Choose Text or Image watermark, configure opacity, rotation angle, position, and page scope.',
+      },
+      {
+        step: 3,
+        title: 'Stamp & Download',
+        desc: 'Click "Apply Watermark" to generate and download your watermarked PDF.',
+      },
+    ],
+    limitations: [
+      'Watermarks are stamped into content streams; they deter unauthorized copying but are not a substitute for cryptographic DRM.',
+      'Image watermarks support PNG and JPEG formats.',
+    ],
+    privacyNotes: [
+      'Watermark rendering and compositing occur 100% on your device.',
+      'Neither source files nor watermark images are sent over the network.',
+    ],
+    relatedToolIds: ['page-numbers', 'protect', 'inspect'],
+  },
+  {
+    toolId: 'pdf-to-images',
+    slug: 'pdf-to-images',
+    name: 'PDF to JPG / PNG',
+    title: 'Convert PDF to JPG & PNG Online — High Resolution Images — OwnPDF',
+    metaDescription:
+      'Convert PDF pages into high-resolution JPG or PNG images locally in your browser. Download single pages or ZIP archive with zero cloud uploads.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}pdf-to-images/`,
+    h1: 'Convert PDF to JPG and PNG Images',
+    shortDescription:
+      'Rasterize PDF sheets into crisp JPG or transparent PNG images. Select specific pages, adjust scale resolution, and download as single images or ZIP.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF File',
+        desc: 'Load the PDF document you want to convert into images.',
+      },
+      {
+        step: 2,
+        title: 'Choose Output Settings',
+        desc: 'Select JPG or PNG, set image resolution scale, and specify which pages to render.',
+      },
+      {
+        step: 3,
+        title: 'Export Images',
+        desc: 'Click "Convert to Images" to render pages locally and download directly or as a ZIP archive.',
+      },
+    ],
+    limitations: [
+      'Conversion is performed locally in browser canvas memory; very high resolutions on large documents may require significant device RAM.',
+      'JPEG format automatically applies a solid white background as JPEG does not support transparency.',
+    ],
+    privacyNotes: [
+      'Pages are rasterized on-device using PDF.js without remote server processing.',
+      'ZIP packaging runs in-memory using client-side JSZip.',
+    ],
+    relatedToolIds: ['images', 'extract-text', 'split'],
+  },
+  {
+    toolId: 'extract-text',
+    slug: 'extract-text',
+    name: 'Extract Text',
+    title: 'Extract Text from PDF Online — Export to TXT — OwnPDF',
+    metaDescription:
+      'Extract selectable text from PDF documents locally in your browser. Reconstruct reading order and download UTF-8 TXT with zero server uploads.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}extract-text/`,
+    h1: 'Extract Text from PDF Online',
+    shortDescription:
+      'Extract selectable text content from PDF pages with reconstructed reading order, live preview, word statistics, and UTF-8 TXT export.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Load PDF File',
+        desc: 'Upload the PDF document you want to extract text from.',
+      },
+      {
+        step: 2,
+        title: 'Preview Text',
+        desc: 'Review extracted text in the live reader, inspect word and character counts, and select page ranges.',
+      },
+      {
+        step: 3,
+        title: 'Copy or Download',
+        desc: 'Copy text directly to your clipboard or download a clean UTF-8 .txt document.',
+      },
+    ],
+    limitations: [
+      'Extracts selectable digital text streams; scanned image-only PDFs require Optical Character Recognition (OCR), which is not included in this phase.',
+      'Complex multi-column or tabular layouts are parsed in reading order but do not reconstruct pixel-perfect typographic grids.',
+    ],
+    privacyNotes: [
+      'Text stream parsing runs completely in your local browser runtime.',
+      'Zero document contents or extracted strings are stored or sent anywhere.',
+    ],
+    relatedToolIds: ['inspect', 'pdf-to-images', 'split'],
+  },
+  {
+    toolId: 'crop',
+    slug: 'crop',
+    name: 'Crop PDF',
+    title: 'Crop PDF Online — Trim Margins & Adjust Viewport — OwnPDF',
+    metaDescription:
+      'Crop and trim PDF margins locally in your browser. Set visual boundaries or numerical margins for selected pages with complete privacy.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}crop/`,
+    h1: 'Crop & Trim PDF Pages Online',
+    shortDescription:
+      'Trim unnecessary margins or adjust visible PDF boundaries visually with interactive previews and customizable margin controls.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF',
+        desc: 'Upload the PDF you want to crop.',
+      },
+      {
+        step: 2,
+        title: 'Set Crop Margins',
+        desc: 'Adjust top, bottom, left, and right margins or select preset trimming options.',
+      },
+      {
+        step: 3,
+        title: 'Crop & Download',
+        desc: 'Click "Crop PDF" to update the visible display area and download the cropped document.',
+      },
+    ],
+    limitations: [
+      'Cropping adjusts the visible PDF CropBox boundary; it does not permanently redact or erase underlying vectors outside the crop area.',
+      'Margins must leave at least 15 points of viewable width and height per page.',
+    ],
+    privacyNotes: [
+      'Crop box modifications are executed strictly in local memory with pdf-lib.',
+      'Zero documents or coordinates are sent to remote servers.',
+    ],
+    relatedToolIds: ['rotate', 'organize', 'split'],
+  },
 ];
+
 
 /**
  * Normalizes a URL pathname and extracts the active tool route if valid.

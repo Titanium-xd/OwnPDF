@@ -73,6 +73,12 @@ async function runVerification() {
     { path: '/OwnPDF/images-to-pdf/', expectedH1: 'Convert Images to PDF Online', expectedTitle: 'Convert Images to PDF Online' },
     { path: '/OwnPDF/compress/', expectedH1: 'Compress & Optimize PDF File Size', expectedTitle: 'Compress PDF Online' },
     { path: '/OwnPDF/inspect/', expectedH1: 'Inspect PDF Properties & Sanitize Metadata', expectedTitle: 'Inspect & Sanitize PDF Online' },
+    { path: '/OwnPDF/rotate/', expectedH1: 'Rotate PDF Pages Online', expectedTitle: 'Rotate PDF Online' },
+    { path: '/OwnPDF/page-numbers/', expectedH1: 'Add Page Numbers to PDF Documents', expectedTitle: 'Add Page Numbers to PDF Online' },
+    { path: '/OwnPDF/watermark/', expectedH1: 'Add Watermark to PDF Online', expectedTitle: 'Add Watermark to PDF Online' },
+    { path: '/OwnPDF/pdf-to-images/', expectedH1: 'Convert PDF to JPG and PNG Images', expectedTitle: 'Convert PDF to JPG & PNG Online' },
+    { path: '/OwnPDF/extract-text/', expectedH1: 'Extract Text from PDF Online', expectedTitle: 'Extract Text from PDF Online' },
+    { path: '/OwnPDF/crop/', expectedH1: 'Crop & Trim PDF Pages Online', expectedTitle: 'Crop PDF Online' },
   ];
 
   let failures = 0;
@@ -114,12 +120,13 @@ async function runVerification() {
   // Test Sitemap & Robots
   const resSitemap = await fetch(`http://localhost:${PORT}/OwnPDF/sitemap.xml`);
   const sitemapText = await resSitemap.text();
-  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 9) {
-    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 9 URLs');
+  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 15) {
+    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 15 URLs');
   } else {
     console.error('FAIL: sitemap.xml check failed');
     failures++;
   }
+
 
   const resRobots = await fetch(`http://localhost:${PORT}/OwnPDF/robots.txt`);
   const robotsText = await resRobots.text();

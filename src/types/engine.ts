@@ -79,6 +79,99 @@ export interface PdfDocumentMetadata {
   pageSize?: { width: number; height: number };
 }
 
+export type PageNumberPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+export type PageNumberFormat =
+  | 'NUMBER_ONLY'
+  | 'PAGE_N'
+  | 'PAGE_N_OF_TOTAL'
+  | 'N_OF_TOTAL';
+
+export interface PageNumberOptions {
+  position?: PageNumberPosition;
+  startNumber?: number;
+  format?: PageNumberFormat;
+  fontSize?: number;
+  margin?: number;
+  pageRange?: string;
+  color?: { r: number; g: number; b: number };
+}
+
+export interface RotateOptions {
+  rotationAngle: 90 | 180 | 270;
+  pageRange?: string;
+  perPageRotations?: Map<number, number>;
+}
+
+export interface WatermarkTextOptions {
+  type: 'text';
+  text: string;
+  fontSize?: number;
+  color?: { r: number; g: number; b: number };
+  opacity?: number;
+  rotationDegrees?: number;
+  pageRange?: string;
+  position?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+}
+
+export interface WatermarkImageOptions {
+  type: 'image';
+  imageData: Uint8Array;
+  imageType: 'image/png' | 'image/jpeg';
+  scale?: number;
+  opacity?: number;
+  rotationDegrees?: number;
+  pageRange?: string;
+  position?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+}
+
+export type WatermarkOptions = WatermarkTextOptions | WatermarkImageOptions;
+
+export interface PdfToImagesOptions {
+  format: 'image/jpeg' | 'image/png';
+  scale?: number;
+  quality?: number;
+  pageRange?: string;
+  onProgress?: (current: number, total: number) => void;
+}
+
+export interface RenderedImage {
+  pageNumber: number;
+  blob: Blob;
+  filename: string;
+}
+
+export interface ExtractTextOptions {
+  pageRange?: string;
+}
+
+export interface ExtractTextResult {
+  text: string;
+  pageCount: number;
+  wordCount: number;
+  characterCount: number;
+  isEmpty: boolean;
+}
+
+export interface CropMargins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export interface CropPdfOptions {
+  margins: CropMargins;
+  isPercentage?: boolean;
+  pageRange?: string;
+}
+
 // Worker RPC Messages
 export type QpdfWorkerAction =
   | { type: 'DECRYPT'; fileData: ArrayBuffer; password: string }
@@ -92,3 +185,4 @@ export type WorkerRpcRequest = {
 export type WorkerRpcResponse =
   | { id: string; ok: true; output: ArrayBuffer }
   | { id: string; ok: false; error: string; code: PdfErrorCode; details?: string };
+

@@ -6,8 +6,9 @@ import { toolRoutes, homeRoute } from '../../src/config/routes';
 describe('Production Pre-rendered HTML & SEO Output', () => {
   const distDir = path.resolve(__dirname, '../../dist');
 
-  it('generates a physical index.html for all 8 tool routes', () => {
+  it('generates a physical index.html for all 14 tool routes', () => {
     // If dist doesn't exist yet (e.g. before full build), skip or test file structure
+
     if (!fs.existsSync(distDir)) {
       return;
     }
@@ -61,7 +62,8 @@ describe('Production Pre-rendered HTML & SEO Output', () => {
     }
   });
 
-  it('generates dist/sitemap.xml with 9 valid URLs', () => {
+  it('generates dist/sitemap.xml with 15 valid URLs', () => {
+
     if (!fs.existsSync(distDir)) {
       return;
     }

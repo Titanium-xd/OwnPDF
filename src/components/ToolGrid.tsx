@@ -13,7 +13,14 @@ import {
   FileSearch,
   Search,
   ArrowRight,
+  RotateCw,
+  Hash,
+  Stamp,
+  Images,
+  FileCode2,
+  Crop,
 } from 'lucide-react';
+
 
 interface ToolItem {
   id: ToolId;
@@ -92,7 +99,56 @@ export const toolsData: ToolItem[] = [
     icon: <FileSearch className="w-5 h-5 text-teal-500" />,
     gradient: 'from-teal-500/10 to-teal-500/5',
   },
+  {
+    id: 'rotate',
+    name: 'Rotate PDF',
+    category: 'Organize',
+    description: 'Rotate selected pages or entire PDF files by 90°, 180°, or 270° with visual previews.',
+    icon: <RotateCw className="w-5 h-5 text-indigo-500" />,
+    gradient: 'from-indigo-500/10 to-indigo-500/5',
+  },
+  {
+    id: 'page-numbers',
+    name: 'Add Page Numbers',
+    category: 'Organize',
+    description: 'Insert customizable page numbers with positioning controls, custom start numbers, and formatting.',
+    icon: <Hash className="w-5 h-5 text-violet-500" />,
+    gradient: 'from-violet-500/10 to-violet-500/5',
+  },
+  {
+    id: 'watermark',
+    name: 'Add Watermark',
+    category: 'Security',
+    description: 'Stamp text or image watermarks onto your PDF with opacity, rotation, and placement controls.',
+    icon: <Stamp className="w-5 h-5 text-pink-500" />,
+    gradient: 'from-pink-500/10 to-pink-500/5',
+  },
+  {
+    id: 'pdf-to-images',
+    name: 'PDF to JPG / PNG',
+    category: 'Convert',
+    description: 'Convert PDF pages into high-resolution JPG or PNG images with ZIP download support.',
+    icon: <Images className="w-5 h-5 text-amber-500" />,
+    gradient: 'from-amber-500/10 to-amber-500/5',
+  },
+  {
+    id: 'extract-text',
+    name: 'Extract Text',
+    category: 'Inspect',
+    description: 'Extract selectable text from PDF documents into UTF-8 TXT files with reading order preservation.',
+    icon: <FileCode2 className="w-5 h-5 text-emerald-500" />,
+    gradient: 'from-emerald-500/10 to-emerald-500/5',
+  },
+  {
+    id: 'crop',
+    name: 'Crop PDF',
+    category: 'Organize',
+    description: 'Trim margins or adjust visible PDF boundaries with visual box preview and custom dimensions.',
+    icon: <Crop className="w-5 h-5 text-orange-500" />,
+    gradient: 'from-orange-500/10 to-orange-500/5',
+  },
 ];
+
 
 export const ToolGrid: React.FC = () => {
   const { setActiveTool } = useSession();

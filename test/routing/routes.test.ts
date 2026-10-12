@@ -10,8 +10,8 @@ import {
 } from '../../src/config/routes';
 
 describe('Route Registry & URL Architecture', () => {
-  it('defines exactly 8 functional tools', () => {
-    expect(toolRoutes).toHaveLength(8);
+  it('defines exactly 14 functional tools', () => {
+    expect(toolRoutes).toHaveLength(14);
     const expectedTools = [
       'unlock',
       'protect',
@@ -21,9 +21,16 @@ describe('Route Registry & URL Architecture', () => {
       'images',
       'compress',
       'inspect',
+      'rotate',
+      'page-numbers',
+      'watermark',
+      'pdf-to-images',
+      'extract-text',
+      'crop',
     ];
     expect(toolRoutes.map((r) => r.toolId)).toEqual(expectedTools);
   });
+
 
   it('guarantees unique slugs, canonical URLs, titles, and descriptions', () => {
     const slugs = new Set<string>();
@@ -81,6 +88,12 @@ describe('Route Registry & URL Architecture', () => {
     expect(getRouteFromPathname('/OwnPDF/organize/', '/OwnPDF/')?.toolId).toBe('organize');
     expect(getRouteFromPathname('/OwnPDF/compress/', '/OwnPDF/')?.toolId).toBe('compress');
     expect(getRouteFromPathname('/OwnPDF/inspect/', '/OwnPDF/')?.toolId).toBe('inspect');
+    expect(getRouteFromPathname('/OwnPDF/rotate/', '/OwnPDF/')?.toolId).toBe('rotate');
+    expect(getRouteFromPathname('/OwnPDF/page-numbers/', '/OwnPDF/')?.toolId).toBe('page-numbers');
+    expect(getRouteFromPathname('/OwnPDF/watermark/', '/OwnPDF/')?.toolId).toBe('watermark');
+    expect(getRouteFromPathname('/OwnPDF/pdf-to-images/', '/OwnPDF/')?.toolId).toBe('pdf-to-images');
+    expect(getRouteFromPathname('/OwnPDF/extract-text/', '/OwnPDF/')?.toolId).toBe('extract-text');
+    expect(getRouteFromPathname('/OwnPDF/crop/', '/OwnPDF/')?.toolId).toBe('crop');
 
     // Unknown paths return null
     expect(getRouteFromPathname('/OwnPDF/unknown-tool/', '/OwnPDF/')).toBeNull();
@@ -91,6 +104,9 @@ describe('Route Registry & URL Architecture', () => {
     expect(isInvalidRoute('/OwnPDF/index.html', '/OwnPDF/')).toBe(false);
     expect(isInvalidRoute('/OwnPDF/merge/', '/OwnPDF/')).toBe(false);
     expect(isInvalidRoute('/OwnPDF/unlock/', '/OwnPDF/')).toBe(false);
+    expect(isInvalidRoute('/OwnPDF/rotate/', '/OwnPDF/')).toBe(false);
+    expect(isInvalidRoute('/OwnPDF/crop/', '/OwnPDF/')).toBe(false);
+
 
     expect(isInvalidRoute('/OwnPDF/nonexistent/', '/OwnPDF/')).toBe(true);
     expect(isInvalidRoute('/OwnPDF/random-page', '/OwnPDF/')).toBe(true);
