@@ -18,7 +18,13 @@ export type ToolId =
   | 'delete-blank-pages'
   | 'resize'
   | 'extract-images'
-  | 'extract-links';
+  | 'extract-links'
+  | 'compare'
+  | 'fill-form'
+  | 'flatten'
+  | 'remove-duplicate-pages'
+  | 'bookmarks'
+  | 'redact';
 
 
 export interface ToolRoute {
@@ -818,7 +824,230 @@ export const toolRoutes: ToolRoute[] = [
     ],
     relatedToolIds: ['extract-text', 'inspect', 'find-replace'],
   },
+  {
+    toolId: 'compare',
+    slug: 'compare',
+    name: 'Compare PDFs',
+    title: 'Compare PDFs — Free Online PDF Comparison Tool | OwnPDF',
+    metaDescription:
+      'Compare two PDF documents side-by-side with visual and text-layer diffing. Inspect line additions, deletions, and structural changes locally in your browser.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}compare/`,
+    h1: 'Compare PDF Documents Side-by-Side',
+    shortDescription: 'Compare two PDFs to identify text changes and visual differences.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select Two PDFs',
+        desc: 'Upload Document A (base version) and Document B (modified version).',
+      },
+      {
+        step: 2,
+        title: 'Run Side-by-Side Diff',
+        desc: 'Click Compare Documents to analyze textual and structural changes across pages.',
+      },
+      {
+        step: 3,
+        title: 'Inspect Changes',
+        desc: 'Expand differing pages to review line-by-line additions, deletions, and layout variances.',
+      },
+    ],
+    limitations: [
+      'Diff analysis compares extracted text items and visual page boundaries.',
+      'Complex multi-column text layouts are compared in extraction stream sequence.',
+    ],
+    privacyNotes: [
+      'Both PDF documents remain entirely within local browser memory.',
+      'Zero server transmission, zero third-party telemetry.',
+    ],
+    relatedToolIds: ['inspect', 'extract-text', 'find-replace'],
+  },
+  {
+    toolId: 'fill-form',
+    slug: 'fill-form',
+    name: 'Fill PDF Forms',
+    title: 'Fill PDF Forms — Free Online PDF Form Filler | OwnPDF',
+    metaDescription:
+      'Fill interactive PDF forms, text inputs, checkboxes, radio groups, and dropdowns directly in your browser. Fast, free, and private.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}fill-form/`,
+    h1: 'Fill Interactive PDF Forms Online',
+    shortDescription: 'Fill out interactive AcroForm fields in your browser with complete privacy.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload Fillable PDF',
+        desc: 'Select any PDF document containing interactive AcroForm fields.',
+      },
+      {
+        step: 2,
+        title: 'Fill Form Fields',
+        desc: 'Type text, toggle checkboxes, choose radio buttons, and select dropdown options.',
+      },
+      {
+        step: 3,
+        title: 'Save & Download',
+        desc: 'Download your filled PDF with all values embedded cleanly into the document.',
+      },
+    ],
+    limitations: [
+      'Supports standard PDF AcroForm text fields, checkboxes, radio groups, and dropdowns.',
+      'Proprietary Adobe LiveCycle dynamic XFA forms are not supported.',
+    ],
+    privacyNotes: [
+      'Form entries and confidential information never leave your device.',
+      'Values are embedded client-side using WebAssembly.',
+    ],
+    relatedToolIds: ['flatten', 'inspect', 'protect'],
+  },
+  {
+    toolId: 'flatten',
+    slug: 'flatten',
+    name: 'Flatten PDF',
+    title: 'Flatten PDF — Convert Forms and Annotations to Static Vector Graphics | OwnPDF',
+    metaDescription:
+      'Flatten interactive PDF form fields, comments, and annotations into permanent document graphics or raster images. Honest flattening reports and 100% privacy.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}flatten/`,
+    h1: 'Flatten Forms & Annotations in PDF',
+    shortDescription: 'Lock fillable form fields and markup into permanent document content.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload PDF Document',
+        desc: 'Select a PDF containing interactive forms, annotations, or comments.',
+      },
+      {
+        step: 2,
+        title: 'Choose Flattening Strategy',
+        desc: 'Select Form Fields Only, Forms & Annotations, or Full Page Rasterization.',
+      },
+      {
+        step: 3,
+        title: 'Download Flattened PDF',
+        desc: 'Get a clean document with interactive elements locked into static visual layers.',
+      },
+    ],
+    limitations: [
+      'Vector flattening bakes annotations with valid appearance streams; unsupported dynamic annotations are preserved and reported.',
+      'Full Page Rasterization mode guarantees 100% flattening by converting pages into high-resolution images.',
+    ],
+    privacyNotes: [
+      'Document vectors and appearance streams are rewritten in local browser memory.',
+      'Zero cloud processing or external server involvement.',
+    ],
+    relatedToolIds: ['fill-form', 'redact', 'compress'],
+  },
+  {
+    toolId: 'remove-duplicate-pages',
+    slug: 'remove-duplicate-pages',
+    name: 'Remove Duplicate Pages',
+    title: 'Remove Duplicate Pages from PDF — Free Cleanup Tool | OwnPDF',
+    metaDescription:
+      'Detect and delete duplicate or repeated pages in PDF files using text and visual fingerprinting. Keep originals and clean up documents locally.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}remove-duplicate-pages/`,
+    h1: 'Detect & Remove Duplicate Pages from PDF',
+    shortDescription: 'Find and delete repeated pages using text and layout fingerprinting.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload Multi-Page PDF',
+        desc: 'Select a PDF that may contain accidental repeated or duplicate pages.',
+      },
+      {
+        step: 2,
+        title: 'Review Duplicate Clusters',
+        desc: 'Inspect detected duplicate page groups and confirm which pages to delete.',
+      },
+      {
+        step: 3,
+        title: 'Download Cleaned PDF',
+        desc: 'Remove selected duplicates without altering the sequence of remaining pages.',
+      },
+    ],
+    limitations: [
+      'Detects duplicate pages using text checksums and visual dimension fingerprints.',
+      'Scanned pages with scanner noise or slight skew may require manual review.',
+    ],
+    privacyNotes: [
+      'Page fingerprinting and deletion execute entirely in browser memory.',
+      'Zero data is uploaded or logged.',
+    ],
+    relatedToolIds: ['delete-blank-pages', 'organize', 'split'],
+  },
+  {
+    toolId: 'bookmarks',
+    slug: 'bookmarks',
+    name: 'Add Bookmarks',
+    title: 'Add Bookmarks to PDF — Create Outline Navigation | OwnPDF',
+    metaDescription:
+      'Add hierarchical chapter bookmarks and navigation outlines to PDF documents. Creates ISO 32000-1 compliant outlines with 100% client-side privacy.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}bookmarks/`,
+    h1: 'Add Navigation Bookmarks to PDF',
+    shortDescription: 'Build structured outlines and table-of-contents navigation for PDF readers.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload PDF Document',
+        desc: 'Select any PDF file where you want to add or organize bookmarks.',
+      },
+      {
+        step: 2,
+        title: 'Build Outline Structure',
+        desc: 'Add chapters and subsections, assign target page numbers, and configure hierarchy.',
+      },
+      {
+        step: 3,
+        title: 'Save & Download',
+        desc: 'Download the PDF with standard ISO 32000-1 outlines configured to open automatically in viewers.',
+      },
+    ],
+    limitations: [
+      'Supports top-level chapters and nested subsections pointing to valid document pages.',
+      'Target page numbers are validated against total document page bounds.',
+    ],
+    privacyNotes: [
+      'Outline dictionaries and destinations are constructed in local browser memory.',
+      'No files are transmitted or stored remotely.',
+    ],
+    relatedToolIds: ['page-numbers', 'organize', 'inspect'],
+  },
+  {
+    toolId: 'redact',
+    slug: 'redact',
+    name: 'Redact PDF',
+    title: 'Redact PDF — Permanent Client-Side Sensitive Data Removal | OwnPDF',
+    metaDescription:
+      'Permanently redact confidential text, account numbers, and images from PDF files. Reconstructs affected pages from sanitized raster images for irreversible destruction.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}redact/`,
+    h1: 'Permanent Client-Side PDF Redaction',
+    shortDescription: 'Black out sensitive text and images with permanent raster reconstruction.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload Document',
+        desc: 'Select the PDF containing sensitive information to redact.',
+      },
+      {
+        step: 2,
+        title: 'Draw Redaction Boxes',
+        desc: 'Click and drag over sensitive text, numbers, or images on the page preview.',
+      },
+      {
+        step: 3,
+        title: 'Burn Redactions & Download',
+        desc: 'Affected pages are reconstructed from sanitized raster images with metadata purged.',
+      },
+    ],
+    limitations: [
+      'Affected pages are rebuilt exclusively from sanitized raster images to permanently destroy underlying text and vector streams.',
+      'Redaction destroys underlying text selection on redacted pages; non-affected pages retain vector text quality.',
+    ],
+    privacyNotes: [
+      'Redaction occurs entirely on your device with solid black burned into canvas memory.',
+      'Original content streams, text operators, and structural metadata are purged forever.',
+    ],
+    relatedToolIds: ['flatten', 'find-replace', 'protect'],
+  },
 ];
+
 
 
 /**

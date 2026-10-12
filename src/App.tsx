@@ -31,6 +31,12 @@ import { DeleteBlankPagesTool } from './components/tools/DeleteBlankPagesTool';
 import { ResizeTool } from './components/tools/ResizeTool';
 import { ExtractImagesTool } from './components/tools/ExtractImagesTool';
 import { ExtractLinksTool } from './components/tools/ExtractLinksTool';
+import { CompareTool } from './components/tools/CompareTool';
+import { FillFormTool } from './components/tools/FillFormTool';
+import { FlattenTool } from './components/tools/FlattenTool';
+import { RemoveDuplicatePagesTool } from './components/tools/RemoveDuplicatePagesTool';
+import { BookmarksTool } from './components/tools/BookmarksTool';
+import { RedactTool } from './components/tools/RedactTool';
 
 const MainAppContent: React.FC = () => {
   const { viewMode, setViewMode, activeTool, isNotFound } = useSession();
@@ -81,6 +87,18 @@ const MainAppContent: React.FC = () => {
         return <ExtractImagesTool />;
       case 'extract-links':
         return <ExtractLinksTool />;
+      case 'compare':
+        return <CompareTool />;
+      case 'fill-form':
+        return <FillFormTool />;
+      case 'flatten':
+        return <FlattenTool />;
+      case 'remove-duplicate-pages':
+        return <RemoveDuplicatePagesTool />;
+      case 'bookmarks':
+        return <BookmarksTool />;
+      case 'redact':
+        return <RedactTool />;
       default:
         return null;
     }

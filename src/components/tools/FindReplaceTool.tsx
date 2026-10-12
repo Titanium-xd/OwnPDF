@@ -3,7 +3,7 @@ import { useSession } from '../../context/SessionContext';
 import { findReplaceEngine } from '../../engine/find-replace';
 import { ToolFileSelector } from '../ToolFileSelector';
 import { downloadPdf, sanitizeDownloadFilename } from '../../utils/download';
-import type { TextMatchOccurrence } from '../../types/engine';
+import type { TextMatchOccurrence, FindReplaceRule, RuleReport } from '../../types/engine';
 import {
   Search,
   Download,
@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Info,
   Check,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -21,9 +23,9 @@ export const FindReplaceTool: React.FC = () => {
   const toolState = getToolState('find-replace');
   const { activeFile } = toolState;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [replaceText, setReplaceText] = useState('');
-  const [matchCase, setMatchCase] = useState(false);
+  const [rules, setRules] = useState<FindReplaceRule[]>([
+    { id: 'rule_1', searchQuery: '', replaceText: '', matchCase: false },
+  ]);
   const [bgHex, setBgHex] = useState('#FFFFFF');
 
   const [isSearching, setIsSearching] = useState(false);
@@ -34,9 +36,11 @@ export const FindReplaceTool: React.FC = () => {
   const [successSummary, setSuccessSummary] = useState<{
     replaced: number;
     collisions: number;
+    conflictCount?: number;
+    ruleReports?: RuleReport[];
   } | null>(null);
 
-  // Clear occurrences when active file changes
+  // Clear state when active file changes
   useEffect(() => {
     setOccurrences([]);
     setSelectedIds(new Set());
@@ -44,8 +48,24 @@ export const FindReplaceTool: React.FC = () => {
     setSuccessSummary(null);
   }, [activeFile?.id]);
 
+  const addRule = () => {
+    const newId = `rule_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    setRules((prev) => [...prev, { id: newId, searchQuery: '', replaceText: '', matchCase: false }]);
+  };
+
+  const removeRule = (id: string) => {
+    if (rules.length <= 1) return;
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateRule = (id: string, updates: Partial<FindReplaceRule>) => {
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+  };
+
+  const hasSearchContent = rules.some((r) => r.searchQuery.trim().length > 0);
+
   const handleSearch = async () => {
-    if (!activeFile || !searchQuery.trim()) {
+    if (!activeFile || !hasSearchContent) {
       setOccurrences([]);
       return;
     }
@@ -55,13 +75,15 @@ export const FindReplaceTool: React.FC = () => {
     setSuccessSummary(null);
 
     try {
-      const results = await findReplaceEngine.searchPdfText(activeFile.data, searchQuery.trim(), {
-        matchCase,
-        replaceText,
+      const activeRules = rules.filter((r) => r.searchQuery.trim().length > 0);
+      const results = await findReplaceEngine.searchPdfText(activeFile.data, '', {
+        rules: activeRules,
       });
       setOccurrences(results);
-      // Pre-select all valid occurrences
-      const validIds = new Set(results.filter((o) => o.status === 'VALID').map((o) => o.id));
+      // Pre-select all valid non-conflicting occurrences
+      const validIds = new Set(
+        results.filter((o) => o.status === 'VALID' && !o.isConflicting).map((o) => o.id)
+      );
       setSelectedIds(validIds);
     } catch (err: any) {
       console.error('Find & Replace search failed:', err);
@@ -82,7 +104,9 @@ export const FindReplaceTool: React.FC = () => {
   };
 
   const selectAll = () => {
-    const validIds = new Set(occurrences.filter((o) => o.status === 'VALID').map((o) => o.id));
+    const validIds = new Set(
+      occurrences.filter((o) => o.status === 'VALID' && !o.isConflicting).map((o) => o.id)
+    );
     setSelectedIds(validIds);
   };
 
@@ -108,10 +132,9 @@ export const FindReplaceTool: React.FC = () => {
 
     try {
       const bgColor = hexToRgb(bgHex);
+      const activeRules = rules.filter((r) => r.searchQuery.trim().length > 0);
       const result = await findReplaceEngine.replacePdfText(activeFile.data, {
-        searchQuery: searchQuery.trim(),
-        replaceText,
-        matchCase,
+        rules: activeRules,
         selectedOccurrenceIds: Array.from(selectedIds),
         backgroundColor: bgColor,
       });
@@ -123,6 +146,8 @@ export const FindReplaceTool: React.FC = () => {
       setSuccessSummary({
         replaced: result.replacedCount,
         collisions: result.collisionCount,
+        conflictCount: result.conflictCount,
+        ruleReports: result.ruleReports,
       });
 
       confetti({
@@ -144,69 +169,96 @@ export const FindReplaceTool: React.FC = () => {
     <div className="w-full max-w-5xl mx-auto space-y-6">
       <ToolFileSelector
         toolId="find-replace"
-        description="Locate words, names, or numbers across pages, preview occurrences, and replace them with visual precision."
+        description="Locate words, names, or numbers across pages with multi-rule support, dual conflict detection, and visual replacement."
       />
 
       {activeFile && (
         <div className="space-y-6">
           {/* Controls Card */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Search className="w-5 h-5 text-indigo-500" />
-              Search & Replace Parameters
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Search className="w-5 h-5 text-indigo-500" />
+                Multi-Rule Search & Replace
+              </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Find Text:
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Enter word or phrase to find..."
-                    className="w-full pl-3 pr-24 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    disabled={isSearching || !searchQuery.trim()}
-                    className="absolute right-1 top-1 bottom-1 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
-                  >
-                    {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                    Search
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Replace With:
-                </label>
-                <input
-                  type="text"
-                  value={replaceText}
-                  onChange={(e) => setReplaceText(e.target.value)}
-                  placeholder="Leave empty to erase visually..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={addRule}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Add Another Rule
+              </button>
             </div>
 
-            {/* Options Row */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-700/60">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={matchCase}
-                  onChange={(e) => setMatchCase(e.target.checked)}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                Match case
-              </label>
+            {/* Dynamic Rule List */}
+            <div className="space-y-3">
+              {rules.map((rule, idx) => (
+                <div
+                  key={rule.id}
+                  className="p-4 bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/60 rounded-xl space-y-3"
+                >
+                  <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span>Rule #{idx + 1}</span>
+                    {rules.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRule(rule.id)}
+                        className="text-rose-500 hover:text-rose-700 p-1 rounded transition-colors"
+                        title="Remove this rule"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Find Text:
+                      </label>
+                      <input
+                        type="text"
+                        value={rule.searchQuery}
+                        onChange={(e) => updateRule(rule.id, { searchQuery: e.target.value })}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        placeholder="e.g. Acme Corp or John Doe..."
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Replace With:
+                      </label>
+                      <input
+                        type="text"
+                        value={rule.replaceText}
+                        onChange={(e) => updateRule(rule.id, { replaceText: e.target.value })}
+                        placeholder="Leave empty to erase visually..."
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-600 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={rule.matchCase ?? false}
+                        onChange={(e) => updateRule(rule.id, { matchCase: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Match case exactly
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Options & Search Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-slate-600 dark:text-slate-400">Background Patch Color:</span>
                 <div className="flex items-center gap-1.5">
@@ -220,9 +272,19 @@ export const FindReplaceTool: React.FC = () => {
                   <span className="text-xs font-mono text-slate-500 uppercase">{bgHex}</span>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleSearch}
+                disabled={isSearching || !hasSearchContent}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white font-semibold text-sm rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+              >
+                {isSearching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                Scan Document for Matches
+              </button>
             </div>
 
-            {/* Honest Technical Limitation Callout */}
+            {/* Technical Limitation Notice */}
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 flex gap-3 text-sm text-amber-900 dark:text-amber-200">
               <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
@@ -252,7 +314,7 @@ export const FindReplaceTool: React.FC = () => {
                     onClick={selectAll}
                     className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
                   >
-                    Select All Valid
+                    Select All Non-Conflicting
                   </button>
                   <button
                     onClick={deselectAll}
@@ -268,13 +330,14 @@ export const FindReplaceTool: React.FC = () => {
                 {occurrences.map((occ) => {
                   const isSelected = selectedIds.has(occ.id);
                   const isUnsupported = occ.status !== 'VALID';
+                  const isConflicting = occ.isConflicting;
 
                   return (
                     <div
                       key={occ.id}
                       className={`pt-2 flex items-start gap-3 p-3 rounded-xl transition-colors ${
-                        isUnsupported
-                          ? 'opacity-60 bg-slate-50 dark:bg-slate-900/40'
+                        isUnsupported || isConflicting
+                          ? 'opacity-70 bg-slate-50 dark:bg-slate-900/40'
                           : isSelected
                           ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30'
                           : 'bg-white dark:bg-slate-800'
@@ -304,7 +367,13 @@ export const FindReplaceTool: React.FC = () => {
                             </span>
                           )}
 
-                          {occ.collisionWarning && (
+                          {isConflicting && (
+                            <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1" title={occ.conflictReason}>
+                              <AlertTriangle className="w-3 h-3" /> Rule Conflict: {occ.conflictReason || 'Overlapping match'}
+                            </span>
+                          )}
+
+                          {occ.collisionWarning && !isConflicting && (
                             <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1" title="Replacement is significantly longer than original">
                               <AlertTriangle className="w-3 h-3" /> Layout collision warning
                             </span>
@@ -327,6 +396,7 @@ export const FindReplaceTool: React.FC = () => {
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleReplaceAndDownload}
                   disabled={isReplacing || selectedIds.size === 0}
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
@@ -347,16 +417,36 @@ export const FindReplaceTool: React.FC = () => {
             </div>
           )}
 
-          {/* Success summary badge */}
+          {/* Success summary badge with per-rule breakdown */}
           {successSummary && (
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4 flex items-center gap-3 text-sm text-emerald-900 dark:text-emerald-200">
-              <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
-                <p className="font-semibold">Replacement Complete & Downloaded!</p>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                  Replaced {successSummary.replaced} occurrence(s). {successSummary.collisions > 0 && `(${successSummary.collisions} had potential layout collisions).`}
-                </p>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-5 space-y-3 text-emerald-900 dark:text-emerald-200">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <p className="font-semibold text-base">Replacement Complete & Downloaded!</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                    Replaced {successSummary.replaced} occurrence(s) in total.
+                  </p>
+                </div>
               </div>
+
+              {successSummary.ruleReports && successSummary.ruleReports.length > 0 && (
+                <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40">
+                  <p className="text-xs font-semibold mb-1.5 uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                    Per-Rule Report:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {successSummary.ruleReports.map((r, i) => (
+                      <div key={r.ruleId || i} className="p-2 rounded-lg bg-emerald-100/60 dark:bg-emerald-900/30 flex justify-between items-center">
+                        <span className="font-mono truncate max-w-[150px]">"{r.searchQuery}"</span>
+                        <span className="font-medium text-emerald-800 dark:text-emerald-200">
+                          {r.replacedCount} replaced {r.conflictCount > 0 && `(${r.conflictCount} conflicts)`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

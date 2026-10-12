@@ -198,4 +198,95 @@ describe('FindReplaceEngine PoC & Validation', () => {
       engine.replacePdfText(fileBytes, { searchQuery: '', replaceText: 'Test' })
     ).rejects.toThrow(/Search query cannot be empty/i);
   });
+
+  it('supports multiple rules replacing both an ID and a Name simultaneously', async () => {
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const page1 = doc.addPage([500, 500]);
+    page1.drawText('Student: Alice Smith (ID: ENROLL-1001)', { x: 50, y: 400, size: 12, font });
+    const page2 = doc.addPage([500, 500]);
+    page2.drawText('Student: Alice Smith (ID: ENROLL-1001)', { x: 50, y: 400, size: 12, font });
+    const pdfBytes = await doc.save();
+
+    const rules = [
+      { id: 'r1', searchQuery: 'Alice Smith', replaceText: 'Bob Jones' },
+      { id: 'r2', searchQuery: 'ENROLL-1001', replaceText: 'ENROLL-9999' },
+    ];
+
+    const occurrences = await engine.searchPdfText(pdfBytes, { rules });
+    expect(occurrences.length).toBe(4); // 2 on page 1, 2 on page 2
+
+    const result = await engine.replacePdfText(pdfBytes, { rules });
+    expect(result.totalMatches).toBe(4);
+    expect(result.replacedCount).toBe(4);
+    expect(result.ruleReports).toBeDefined();
+    expect(result.ruleReports?.length).toBe(2);
+    expect(result.ruleReports?.[0].replacedCount).toBe(2);
+    expect(result.ruleReports?.[1].replacedCount).toBe(2);
+
+    // Verify visual replacement in output PDF
+    const reloadDoc = await PDFDocument.load(result.pdfData);
+    expect(reloadDoc.getPageCount()).toBe(2);
+  });
+
+  it('prevents accidental cascading replacements where rule B search text is created by rule A', async () => {
+    // Rule 1 replaces "CAT" with "DOG".
+    // Rule 2 replaces "DOG" with "BIRD".
+    // If cascading happened, "CAT" would become "DOG" and then "BIRD".
+    // Since we process against original content, "CAT" must become "DOG", and original "DOG" becomes "BIRD".
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const page = doc.addPage([500, 500]);
+    page.drawText('The CAT and the DOG', { x: 50, y: 400, size: 12, font });
+    const pdfBytes = await doc.save();
+
+    const rules = [
+      { id: 'r1', searchQuery: 'CAT', replaceText: 'DOG' },
+      { id: 'r2', searchQuery: 'DOG', replaceText: 'BIRD' },
+    ];
+
+    const result = await engine.replacePdfText(pdfBytes, { rules });
+    expect(result.replacedCount).toBe(2);
+    expect(result.ruleReports?.[0].replacedCount).toBe(1);
+    expect(result.ruleReports?.[1].replacedCount).toBe(1);
+  });
+
+  it('detects textual overlap and visual patch conflicts between conflicting rules', async () => {
+    // Rule 1 matches "John Doe", Rule 2 matches "Doe" (textual overlap)
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const page = doc.addPage([500, 500]);
+    page.drawText('Signature: John Doe, Manager', { x: 50, y: 400, size: 12, font });
+    const pdfBytes = await doc.save();
+
+    const rules = [
+      { id: 'r1', searchQuery: 'John Doe', replaceText: 'Jane Smith' },
+      { id: 'r2', searchQuery: 'Doe', replaceText: 'Williams' },
+    ];
+
+    const occurrences = await engine.searchPdfText(pdfBytes, { rules });
+    expect(occurrences.length).toBe(2);
+
+    // Both occurrences should be flagged as CONFLICT and deselected
+    const conflicts = occurrences.filter((o) => o.status === 'CONFLICT');
+    expect(conflicts.length).toBe(2);
+    expect(conflicts[0].isConflicting).toBe(true);
+    expect(conflicts[0].selected).toBe(false);
+
+    // Without user selection/resolution, replacing skips them and reports conflicts
+    const result = await engine.replacePdfText(pdfBytes, { rules });
+    expect(result.replacedCount).toBe(0);
+    expect(result.conflictCount).toBe(2);
+    expect(result.ruleReports?.[0].conflictCount).toBe(1);
+    expect(result.ruleReports?.[1].conflictCount).toBe(1);
+
+    // User explicitly resolves conflict by selecting only Rule 1
+    const resolvedResult = await engine.replacePdfText(pdfBytes, {
+      rules,
+      selectedOccurrenceIds: [occurrences[0].id],
+    });
+    // When user selected occurrence 0, it applies rule 1
+    expect(resolvedResult.replacedCount).toBe(1);
+    expect(resolvedResult.skippedCount).toBe(1);
+  });
 });

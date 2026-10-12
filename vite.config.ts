@@ -172,6 +172,17 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'credentialless',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-pdfjs': ['pdfjs-dist'],
+          'vendor-pdflib': ['pdf-lib'],
+        },
+      },
+    },
+  },
   optimizeDeps: {
     include: ['@neslinesli93/qpdf-wasm'],
   },

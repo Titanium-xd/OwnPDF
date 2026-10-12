@@ -85,6 +85,12 @@ async function runVerification() {
     { path: '/OwnPDF/resize/', expectedH1: 'Resize PDF Page Size & Dimensions Online', expectedTitle: 'Resize PDF Page Dimensions Online' },
     { path: '/OwnPDF/extract-images/', expectedH1: 'Extract Embedded Images from PDF Online', expectedTitle: 'Extract Images from PDF Online' },
     { path: '/OwnPDF/extract-links/', expectedH1: 'Extract Links & Hyperlinks from PDF Online', expectedTitle: 'Extract Links from PDF Online' },
+    { path: '/OwnPDF/compare/', expectedH1: 'Compare PDF Documents Side-by-Side', expectedTitle: 'Compare PDFs — Free Online PDF Comparison Tool' },
+    { path: '/OwnPDF/fill-form/', expectedH1: 'Fill Interactive PDF Forms Online', expectedTitle: 'Fill PDF Forms — Free Online PDF Form Filler' },
+    { path: '/OwnPDF/flatten/', expectedH1: 'Flatten Forms & Annotations in PDF', expectedTitle: 'Flatten PDF — Convert Forms and Annotations to Static Vector Graphics' },
+    { path: '/OwnPDF/remove-duplicate-pages/', expectedH1: 'Detect & Remove Duplicate Pages from PDF', expectedTitle: 'Remove Duplicate Pages from PDF — Free Cleanup Tool' },
+    { path: '/OwnPDF/bookmarks/', expectedH1: 'Add Navigation Bookmarks to PDF', expectedTitle: 'Add Bookmarks to PDF — Create Outline Navigation' },
+    { path: '/OwnPDF/redact/', expectedH1: 'Permanent Client-Side PDF Redaction', expectedTitle: 'Redact PDF — Permanent Client-Side Sensitive Data Removal' },
   ];
 
   let failures = 0;
@@ -126,8 +132,8 @@ async function runVerification() {
   // Test Sitemap & Robots
   const resSitemap = await fetch(`http://localhost:${PORT}/OwnPDF/sitemap.xml`);
   const sitemapText = await resSitemap.text();
-  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 21) {
-    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 21 URLs');
+  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 27) {
+    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 27 URLs');
   } else {
     console.error('FAIL: sitemap.xml check failed');
     failures++;

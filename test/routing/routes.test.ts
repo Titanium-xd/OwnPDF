@@ -10,8 +10,8 @@ import {
 } from '../../src/config/routes';
 
 describe('Route Registry & URL Architecture', () => {
-  it('defines exactly 20 functional tools', () => {
-    expect(toolRoutes).toHaveLength(20);
+  it('defines exactly 26 functional tools', () => {
+    expect(toolRoutes).toHaveLength(26);
     const expectedTools = [
       'unlock',
       'protect',
@@ -33,6 +33,12 @@ describe('Route Registry & URL Architecture', () => {
       'resize',
       'extract-images',
       'extract-links',
+      'compare',
+      'fill-form',
+      'flatten',
+      'remove-duplicate-pages',
+      'bookmarks',
+      'redact',
     ];
     expect(toolRoutes.map((r) => r.toolId)).toEqual(expectedTools);
   });

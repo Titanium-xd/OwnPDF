@@ -187,13 +187,23 @@ export type WorkerRpcResponse =
   | { id: string; ok: false; error: string; code: PdfErrorCode; details?: string };
 
 // Batch 1: Find & Replace Text Types
-export type MatchStatus = 'VALID' | 'AMBIGUOUS_COORDINATES' | 'UNSUPPORTED_LAYOUT';
+export type MatchStatus = 'VALID' | 'AMBIGUOUS_COORDINATES' | 'UNSUPPORTED_LAYOUT' | 'CONFLICT';
+
+export interface FindReplaceRule {
+  id: string;
+  searchQuery: string;
+  replaceText: string;
+  matchCase?: boolean;
+}
 
 export interface TextMatchOccurrence {
   id: string;
+  ruleId?: string;
+  ruleIndex?: number;
   pageIndex: number; // 0-indexed
   pageNumber: number; // 1-indexed
   text: string;
+  replaceText?: string;
   x: number;
   y: number;
   width: number;
@@ -203,15 +213,30 @@ export interface TextMatchOccurrence {
   snippet: string;
   status: MatchStatus;
   collisionWarning?: boolean;
+  isConflicting?: boolean;
+  conflictReason?: string;
   selected?: boolean;
 }
 
 export interface FindReplaceOptions {
-  searchQuery: string;
-  replaceText: string;
+  searchQuery?: string;
+  replaceText?: string;
   matchCase?: boolean;
+  rules?: FindReplaceRule[];
   selectedOccurrenceIds?: string[];
   backgroundColor?: { r: number; g: number; b: number };
+}
+
+export interface RuleReport {
+  ruleId: string;
+  searchQuery: string;
+  replaceText: string;
+  totalMatches: number;
+  replacedCount: number;
+  skippedCount: number;
+  unsupportedCount: number;
+  collisionCount: number;
+  conflictCount: number;
 }
 
 export interface FindReplaceResult {
@@ -220,6 +245,8 @@ export interface FindReplaceResult {
   replacedCount: number;
   skippedCount: number;
   collisionCount: number;
+  conflictCount?: number;
+  ruleReports?: RuleReport[];
   occurrences: TextMatchOccurrence[];
 }
 
@@ -303,6 +330,144 @@ export interface ExtractLinksResult {
   links: ExtractedLinkItem[];
   totalCount: number;
   uniqueCount: number;
+}
+
+// Phase 5: Compare PDFs Types
+export type PageDiffStatus = 'IDENTICAL' | 'TEXT_DIFF_ONLY' | 'VISUAL_DIFF_ONLY' | 'BOTH_DIFF' | 'ONLY_IN_A' | 'ONLY_IN_B';
+
+export interface TextDiffLine {
+  type: 'same' | 'added' | 'removed';
+  text: string;
+}
+
+export interface PageComparison {
+  pageNumber: number;
+  status: PageDiffStatus;
+  hasTextDiff: boolean;
+  hasVisualDiff: boolean;
+  textDiffLines: TextDiffLine[];
+  similarityScore: number; // 0 - 100%
+  pageAWidth?: number;
+  pageAHeight?: number;
+  pageBWidth?: number;
+  pageBHeight?: number;
+}
+
+export interface CompareResult {
+  docAPageCount: number;
+  docBPageCount: number;
+  pageComparisons: PageComparison[];
+  identicalPageCount: number;
+  differentPageCount: number;
+  totalEvaluatedPages: number;
+}
+
+// Phase 5: Fill PDF Forms Types
+export type FormFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'unsupported';
+
+export interface FormFieldInfo {
+  name: string;
+  type: FormFieldType;
+  value: string | boolean;
+  options?: string[]; // for radio & dropdown
+  isMultiline?: boolean;
+  isReadOnly?: boolean;
+  maxLength?: number;
+}
+
+export interface FillFormResult {
+  pdfData: Uint8Array;
+  filledFieldCount: number;
+  totalFieldsCount: number;
+}
+
+// Phase 5: Flatten PDF Types
+export type FlattenMode = 'forms' | 'annotations' | 'rasterize';
+
+export interface FlattenReport {
+  mode: FlattenMode;
+  flattenedFieldsCount: number;
+  flattenedAnnotationsCount: number;
+  remainingInteractiveCount: number;
+  unsupportedAnnotationsCount: number;
+  unsupportedTypes: string[];
+  isFullyFlattened: boolean;
+}
+
+export interface FlattenResult {
+  pdfData: Uint8Array;
+  report: FlattenReport;
+}
+
+// Phase 5: Remove Duplicate Pages Types
+export interface DuplicateCandidate {
+  pageIndex: number; // 0-indexed
+  pageNumber: number; // 1-indexed
+  isOriginal: boolean;
+  duplicateOfPageNumber?: number;
+  confidence: number; // 0 - 100%
+  textHash: string;
+  visualHash: string;
+  selectedForDeletion: boolean;
+}
+
+export interface DuplicateGroup {
+  groupId: string;
+  originalPageNumber: number;
+  duplicatePageNumbers: number[];
+  confidence: number;
+  candidates: DuplicateCandidate[];
+}
+
+export interface DuplicateDetectionResult {
+  groups: DuplicateGroup[];
+  totalDuplicatesDetected: number;
+  candidates: DuplicateCandidate[];
+}
+
+// Phase 5: Add Bookmarks Types
+export interface BookmarkItem {
+  id: string;
+  title: string;
+  targetPageNumber: number; // 1-indexed
+  level: number; // 0 = top-level, 1 = nested subsection
+  children?: BookmarkItem[];
+}
+
+export interface AddBookmarksOptions {
+  bookmarks: BookmarkItem[];
+  replaceExisting?: boolean; // if false, append to existing outlines
+}
+
+export interface AddBookmarksResult {
+  pdfData: Uint8Array;
+  totalBookmarksCount: number;
+}
+
+// Phase 5: Redact PDF Types
+export interface RedactionBox {
+  id: string;
+  pageIndex: number; // 0-indexed
+  pageNumber: number; // 1-indexed
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  coordinateSpace?: 'viewport' | 'pdf';
+}
+
+export interface RedactOptions {
+  boxes: RedactionBox[];
+  rasterizeAllPages?: boolean; // default false (only affected pages rasterized)
+  sanitizeMetadata?: boolean; // default true
+  dpi?: number; // default 200
+}
+
+export interface RedactResult {
+  pdfData: Uint8Array;
+  redactedPagesCount: number;
+  redactionBoxesCount: number;
+  sanitizedMetadata: boolean;
 }
 
 

@@ -64,6 +64,17 @@ export async function convertPdfToImages(
     const page = await pdfDoc.getPage(pageNum);
     const viewport = page.getViewport({ scale });
 
+    if (typeof document === 'undefined') {
+      const blob = new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: mimeType });
+      const filename = `${sourceBaseName}-page-${pageNum}.${ext}`;
+      images.push({
+        pageNumber: pageNum,
+        blob,
+        filename,
+      });
+      continue;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);

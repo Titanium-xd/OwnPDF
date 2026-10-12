@@ -25,6 +25,11 @@ import {
   Scaling,
   ImageDown,
   Link,
+  GitCompare,
+  FileCheck,
+  CopyX,
+  Bookmark,
+  ShieldAlert,
 } from 'lucide-react';
 
 
@@ -200,6 +205,55 @@ export const toolsData: ToolItem[] = [
     description: 'Discover and export all clickable hyperlink annotations, internal page destinations, and plaintext URLs.',
     icon: <Link className="w-5 h-5 text-teal-500" />,
     gradient: 'from-teal-500/10 to-teal-500/5',
+  },
+  {
+    id: 'compare',
+    name: 'Compare PDFs',
+    category: 'Inspect',
+    description: 'Perform side-by-side visual and text-layer comparison with change highlights and diff reports.',
+    icon: <GitCompare className="w-5 h-5 text-indigo-500" />,
+    gradient: 'from-indigo-500/10 to-indigo-500/5',
+  },
+  {
+    id: 'fill-form',
+    name: 'Fill PDF Forms',
+    category: 'Organize',
+    description: 'Fill interactive AcroForm fields, checkboxes, radio groups, and dropdowns directly in your browser.',
+    icon: <FileCheck className="w-5 h-5 text-blue-500" />,
+    gradient: 'from-blue-500/10 to-blue-500/5',
+  },
+  {
+    id: 'flatten',
+    name: 'Flatten PDF',
+    category: 'Optimize',
+    description: 'Bake interactive form fields, comments, and annotations into permanent vector graphics or images.',
+    icon: <Layers className="w-5 h-5 text-emerald-500" />,
+    gradient: 'from-emerald-500/10 to-emerald-500/5',
+  },
+  {
+    id: 'remove-duplicate-pages',
+    name: 'Remove Duplicate Pages',
+    category: 'Organize',
+    description: 'Detect and delete repeated pages using dual text checksum and layout fingerprints.',
+    icon: <CopyX className="w-5 h-5 text-violet-500" />,
+    gradient: 'from-violet-500/10 to-violet-500/5',
+  },
+  {
+    id: 'bookmarks',
+    name: 'Add Bookmarks',
+    category: 'Organize',
+    description: 'Build structured outlines and table-of-contents navigation for PDF readers.',
+    icon: <Bookmark className="w-5 h-5 text-sky-500" />,
+    gradient: 'from-sky-500/10 to-sky-500/5',
+  },
+  {
+    id: 'redact',
+    name: 'Redact PDF',
+    category: 'Security',
+    description: 'Permanently black out sensitive text and graphics by rebuilding affected pages from sanitized raster images.',
+    icon: <ShieldAlert className="w-5 h-5 text-rose-500" />,
+    badge: 'Security',
+    gradient: 'from-rose-500/10 to-rose-500/5',
   },
 ];
 
