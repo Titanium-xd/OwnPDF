@@ -186,3 +186,123 @@ export type WorkerRpcResponse =
   | { id: string; ok: true; output: ArrayBuffer }
   | { id: string; ok: false; error: string; code: PdfErrorCode; details?: string };
 
+// Batch 1: Find & Replace Text Types
+export type MatchStatus = 'VALID' | 'AMBIGUOUS_COORDINATES' | 'UNSUPPORTED_LAYOUT';
+
+export interface TextMatchOccurrence {
+  id: string;
+  pageIndex: number; // 0-indexed
+  pageNumber: number; // 1-indexed
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  rotation: number;
+  snippet: string;
+  status: MatchStatus;
+  collisionWarning?: boolean;
+  selected?: boolean;
+}
+
+export interface FindReplaceOptions {
+  searchQuery: string;
+  replaceText: string;
+  matchCase?: boolean;
+  selectedOccurrenceIds?: string[];
+  backgroundColor?: { r: number; g: number; b: number };
+}
+
+export interface FindReplaceResult {
+  pdfData: Uint8Array;
+  totalMatches: number;
+  replacedCount: number;
+  skippedCount: number;
+  collisionCount: number;
+  occurrences: TextMatchOccurrence[];
+}
+
+// Batch 1: Reverse Pages Types
+export type ReverseMode = 'all' | 'range' | 'duplex-inverted';
+
+export interface ReversePagesOptions {
+  mode: ReverseMode;
+  pageRange?: string; // e.g. "3-6"
+}
+
+// Batch 1: Delete Blank Pages Types
+export type BlankPageConfidence = 'HIGH_CONFIDENCE_BLANK' | 'POSSIBLE_NOISE' | 'HAS_CONTENT';
+
+export interface BlankPageCandidate {
+  pageIndex: number;
+  pageNumber: number;
+  inkCoverage: number; // Percentage 0 - 100
+  textGlyphCount: number;
+  status: BlankPageConfidence;
+  selected: boolean;
+}
+
+export interface DetectBlankPagesOptions {
+  threshold?: number; // default 0.15% ink coverage
+}
+
+export interface DetectBlankPagesResult {
+  candidates: BlankPageCandidate[];
+  blankCount: number;
+  totalPages: number;
+}
+
+// Batch 1: Resize PDF Types
+export type StandardPageSize = 'A4' | 'LETTER' | 'A3' | 'A5' | 'LEGAL' | 'TABLOID';
+export type ResizeMode = 'fit' | 'fill-crop' | 'canvas';
+
+export interface ResizePdfOptions {
+  targetSize: StandardPageSize | { width: number; height: number };
+  mode: ResizeMode;
+  orientation?: 'portrait' | 'landscape' | 'keep';
+  margin?: number; // in pt (default 0)
+  pageRange?: string;
+}
+
+// Batch 1: Extract Images Types
+export interface ExtractedImageItem {
+  id: string;
+  pageNumber: number;
+  name: string;
+  format: 'jpeg' | 'png';
+  width: number;
+  height: number;
+  sizeBytes: number;
+  data: Uint8Array;
+  blob: Blob;
+  isDeduplicated?: boolean;
+  status: 'SUCCESS' | 'FAILED_CORRUPT';
+}
+
+export interface ExtractImagesResult {
+  images: ExtractedImageItem[];
+  totalCount: number;
+  totalBytes: number;
+  zipBlob?: Blob;
+}
+
+// Batch 1: Extract Links Types
+export type LinkType = 'external' | 'internal' | 'text-url';
+
+export interface ExtractedLinkItem {
+  id: string;
+  pageNumber: number;
+  type: LinkType;
+  text: string;
+  url: string;
+  destPageNumber?: number;
+}
+
+export interface ExtractLinksResult {
+  links: ExtractedLinkItem[];
+  totalCount: number;
+  uniqueCount: number;
+}
+
+

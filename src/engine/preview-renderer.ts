@@ -21,8 +21,8 @@ export async function renderPdfPageToCanvas(
 
   const loadingTask = pdfjsLib.getDocument({
     data: dataCopy,
-    cMapUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/cmaps/',
-    cMapPacked: true,
+    disableFontFace: true,
+    isEvalSupported: false,
   });
 
   const pdfDoc = await loadingTask.promise;

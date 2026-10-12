@@ -10,8 +10,8 @@ import {
 } from '../../src/config/routes';
 
 describe('Route Registry & URL Architecture', () => {
-  it('defines exactly 14 functional tools', () => {
-    expect(toolRoutes).toHaveLength(14);
+  it('defines exactly 20 functional tools', () => {
+    expect(toolRoutes).toHaveLength(20);
     const expectedTools = [
       'unlock',
       'protect',
@@ -27,6 +27,12 @@ describe('Route Registry & URL Architecture', () => {
       'pdf-to-images',
       'extract-text',
       'crop',
+      'find-replace',
+      'reverse-pages',
+      'delete-blank-pages',
+      'resize',
+      'extract-images',
+      'extract-links',
     ];
     expect(toolRoutes.map((r) => r.toolId)).toEqual(expectedTools);
   });
@@ -94,6 +100,12 @@ describe('Route Registry & URL Architecture', () => {
     expect(getRouteFromPathname('/OwnPDF/pdf-to-images/', '/OwnPDF/')?.toolId).toBe('pdf-to-images');
     expect(getRouteFromPathname('/OwnPDF/extract-text/', '/OwnPDF/')?.toolId).toBe('extract-text');
     expect(getRouteFromPathname('/OwnPDF/crop/', '/OwnPDF/')?.toolId).toBe('crop');
+    expect(getRouteFromPathname('/OwnPDF/find-replace/', '/OwnPDF/')?.toolId).toBe('find-replace');
+    expect(getRouteFromPathname('/OwnPDF/reverse-pages/', '/OwnPDF/')?.toolId).toBe('reverse-pages');
+    expect(getRouteFromPathname('/OwnPDF/delete-blank-pages/', '/OwnPDF/')?.toolId).toBe('delete-blank-pages');
+    expect(getRouteFromPathname('/OwnPDF/resize/', '/OwnPDF/')?.toolId).toBe('resize');
+    expect(getRouteFromPathname('/OwnPDF/extract-images/', '/OwnPDF/')?.toolId).toBe('extract-images');
+    expect(getRouteFromPathname('/OwnPDF/extract-links/', '/OwnPDF/')?.toolId).toBe('extract-links');
 
     // Unknown paths return null
     expect(getRouteFromPathname('/OwnPDF/unknown-tool/', '/OwnPDF/')).toBeNull();
@@ -106,7 +118,8 @@ describe('Route Registry & URL Architecture', () => {
     expect(isInvalidRoute('/OwnPDF/unlock/', '/OwnPDF/')).toBe(false);
     expect(isInvalidRoute('/OwnPDF/rotate/', '/OwnPDF/')).toBe(false);
     expect(isInvalidRoute('/OwnPDF/crop/', '/OwnPDF/')).toBe(false);
-
+    expect(isInvalidRoute('/OwnPDF/find-replace/', '/OwnPDF/')).toBe(false);
+    expect(isInvalidRoute('/OwnPDF/resize/', '/OwnPDF/')).toBe(false);
 
     expect(isInvalidRoute('/OwnPDF/nonexistent/', '/OwnPDF/')).toBe(true);
     expect(isInvalidRoute('/OwnPDF/random-page', '/OwnPDF/')).toBe(true);

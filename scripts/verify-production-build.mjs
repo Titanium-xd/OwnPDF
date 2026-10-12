@@ -79,6 +79,12 @@ async function runVerification() {
     { path: '/OwnPDF/pdf-to-images/', expectedH1: 'Convert PDF to JPG and PNG Images', expectedTitle: 'Convert PDF to JPG & PNG Online' },
     { path: '/OwnPDF/extract-text/', expectedH1: 'Extract Text from PDF Online', expectedTitle: 'Extract Text from PDF Online' },
     { path: '/OwnPDF/crop/', expectedH1: 'Crop & Trim PDF Pages Online', expectedTitle: 'Crop PDF Online' },
+    { path: '/OwnPDF/find-replace/', expectedH1: 'Find & Replace Text in PDF Locally', expectedTitle: 'Find & Replace Text in PDF Online' },
+    { path: '/OwnPDF/reverse-pages/', expectedH1: 'Reverse PDF Page Order Online', expectedTitle: 'Reverse PDF Pages Online' },
+    { path: '/OwnPDF/delete-blank-pages/', expectedH1: 'Delete Blank & Empty PDF Pages Online', expectedTitle: 'Delete Blank Pages from PDF Online' },
+    { path: '/OwnPDF/resize/', expectedH1: 'Resize PDF Page Size & Dimensions Online', expectedTitle: 'Resize PDF Page Dimensions Online' },
+    { path: '/OwnPDF/extract-images/', expectedH1: 'Extract Embedded Images from PDF Online', expectedTitle: 'Extract Images from PDF Online' },
+    { path: '/OwnPDF/extract-links/', expectedH1: 'Extract Links & Hyperlinks from PDF Online', expectedTitle: 'Extract Links from PDF Online' },
   ];
 
   let failures = 0;
@@ -120,8 +126,8 @@ async function runVerification() {
   // Test Sitemap & Robots
   const resSitemap = await fetch(`http://localhost:${PORT}/OwnPDF/sitemap.xml`);
   const sitemapText = await resSitemap.text();
-  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 15) {
-    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 15 URLs');
+  if (resSitemap.status === 200 && sitemapText.includes('<loc>') && (sitemapText.match(/<loc>/g) || []).length === 21) {
+    console.log('PASS: /OwnPDF/sitemap.xml -> 200 OK with all 21 URLs');
   } else {
     console.error('FAIL: sitemap.xml check failed');
     failures++;

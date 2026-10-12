@@ -12,7 +12,13 @@ export type ToolId =
   | 'watermark'
   | 'pdf-to-images'
   | 'extract-text'
-  | 'crop';
+  | 'crop'
+  | 'find-replace'
+  | 'reverse-pages'
+  | 'delete-blank-pages'
+  | 'resize'
+  | 'extract-images'
+  | 'extract-links';
 
 
 export interface ToolRoute {
@@ -580,6 +586,237 @@ export const toolRoutes: ToolRoute[] = [
       'Zero documents or coordinates are sent to remote servers.',
     ],
     relatedToolIds: ['rotate', 'organize', 'split'],
+  },
+  {
+    toolId: 'find-replace',
+    slug: 'find-replace',
+    name: 'Find & Replace',
+    title: 'Find & Replace Text in PDF Online — Free & Private — OwnPDF',
+    metaDescription:
+      'Find and replace text, words, and numbers in PDF documents locally in your browser with layout collision warnings and visual precision.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}find-replace/`,
+    h1: 'Find & Replace Text in PDF Locally',
+    shortDescription:
+      'Locate words, names, or numbers across pages, preview occurrences, and replace them with visual precision.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF Document',
+        desc: 'Choose or drag-and-drop the PDF you want to search.',
+      },
+      {
+        step: 2,
+        title: 'Enter Search & Replacement Text',
+        desc: 'Type the search query and desired replacement text, then click "Search".',
+      },
+      {
+        step: 3,
+        title: 'Review Occurrences & Download',
+        desc: 'Select which occurrences to replace, verify collision warnings, and click "Replace & Download PDF".',
+      },
+    ],
+    limitations: [
+      'Visual masking covers matched text with an opaque background patch and stamps replacement text at the exact baseline; it does not destroy underlying vector streams or reflow paragraphs.',
+      'Replacing short words with significantly longer phrases may collide with adjacent text on the page.',
+      'Text rendered vertically or with complex transformation matrices cannot be replaced.',
+    ],
+    privacyNotes: [
+      'Zero search terms, replacement strings, or PDF documents leave your device.',
+      'All text searching and visual patching execute in-browser using WebAssembly and Web Workers.',
+    ],
+    relatedToolIds: ['extract-text', 'watermark', 'crop'],
+  },
+  {
+    toolId: 'reverse-pages',
+    slug: 'reverse-pages',
+    name: 'Reverse Pages',
+    title: 'Reverse PDF Pages Online — Invert Page Order — OwnPDF',
+    metaDescription:
+      'Reverse and invert page order in PDF documents with 1 click. Reverse entire document, specific page ranges, or fix inverted duplex scanner feeds.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}reverse-pages/`,
+    h1: 'Reverse PDF Page Order Online',
+    shortDescription:
+      'Invert page order with 1-click presets: entire document, specific page ranges, or duplex scanner back-sides.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload PDF',
+        desc: 'Select the PDF document whose pages you want to reverse.',
+      },
+      {
+        step: 2,
+        title: 'Choose Reversal Mode',
+        desc: 'Select "Reverse All Pages", "Reverse Specific Range", or "Duplex Scanner Fix".',
+      },
+      {
+        step: 3,
+        title: 'Download Inverted PDF',
+        desc: 'Click "Reverse Pages & Download" to save your reorganized document immediately.',
+      },
+    ],
+    limitations: [
+      'Page vector content, rotation, dimensions, annotations, and document metadata (Title, Author) are verified and preserved.',
+      'In accordance with PDF specifications, document outline bookmarks (/Outlines) and custom page labels are omitted in reordered outputs.',
+    ],
+    privacyNotes: [
+      'Page reordering runs 100% locally in browser memory with pdf-lib.',
+      'No document uploads or server calls.',
+    ],
+    relatedToolIds: ['organize', 'rotate', 'split'],
+  },
+  {
+    toolId: 'delete-blank-pages',
+    slug: 'delete-blank-pages',
+    name: 'Delete Blank Pages',
+    title: 'Delete Blank Pages from PDF Online — Free & Private — OwnPDF',
+    metaDescription:
+      'Detect and remove blank or empty pages from PDF documents. Features dual-mode ink density and text layer analysis with noise tolerance.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}delete-blank-pages/`,
+    h1: 'Delete Blank & Empty PDF Pages Online',
+    shortDescription:
+      'Detect and remove empty or accidental scanner sheets using intelligent ink-density and text-layer analysis.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF',
+        desc: 'Upload the PDF document you wish to clean.',
+      },
+      {
+        step: 2,
+        title: 'Review Candidate Pages',
+        desc: 'The detector automatically marks candidate blank pages. Adjust the noise slider and check/uncheck pages.',
+      },
+      {
+        step: 3,
+        title: 'Confirm Deletion & Download',
+        desc: 'Click "Delete Selected Pages & Download" to remove blank sheets and save your cleaned document.',
+      },
+    ],
+    limitations: [
+      'Operates as a candidate detector requiring explicit user confirmation before deletion.',
+      'Pages with invisible OCR text layers or minimal content (such as single-digit page numbers) are preserved from deletion.',
+    ],
+    privacyNotes: [
+      'Page analysis and deletion are performed completely client-side in browser memory.',
+      'No documents or images are ever transmitted over the network.',
+    ],
+    relatedToolIds: ['organize', 'split', 'reverse-pages'],
+  },
+  {
+    toolId: 'resize',
+    slug: 'resize',
+    name: 'Resize PDF',
+    title: 'Resize PDF Page Dimensions Online — Change Page Size — OwnPDF',
+    metaDescription:
+      'Resize PDF page dimensions to standard sizes like A4, US Letter, A3, and Legal. Choose proportional fitting, fill & crop, or canvas padding.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}resize/`,
+    h1: 'Resize PDF Page Size & Dimensions Online',
+    shortDescription:
+      'Change page dimensions to standard sizes (A4, Letter, A3, Legal) with proportional scaling, fill & crop, or canvas padding.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Choose PDF File',
+        desc: 'Upload the PDF you want to resize.',
+      },
+      {
+        step: 2,
+        title: 'Select Target Size & Strategy',
+        desc: 'Choose your desired paper format (e.g. A4, Letter) and strategy (Fit, Fill & Crop, or Canvas).',
+      },
+      {
+        step: 3,
+        title: 'Resize & Download',
+        desc: 'Click "Resize PDF & Download" to generate and save your resized document.',
+      },
+    ],
+    limitations: [
+      'Proportional Fit adds letterbox/pillarbox margins when aspect ratios differ.',
+      'Fill & Bleed scales content to cover target dimensions, clipping excess outside the margin boundary.',
+      'Canvas Padding keeps 100% vector scale without zooming content.',
+    ],
+    privacyNotes: [
+      'Page geometry transformations run locally in your browser.',
+      'Zero document data is sent to external servers.',
+    ],
+    relatedToolIds: ['crop', 'rotate', 'images'],
+  },
+  {
+    toolId: 'extract-images',
+    slug: 'extract-images',
+    name: 'Extract Images',
+    title: 'Extract Images from PDF Online — Lossless Photo & Figure Export — OwnPDF',
+    metaDescription:
+      'Extract embedded photos, illustrations, and figures from PDF files in their original lossless quality. Download individually or as a ZIP archive.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}extract-images/`,
+    h1: 'Extract Embedded Images from PDF Online',
+    shortDescription:
+      'Extract embedded photos, graphics, and figures in their original lossless quality, single or bundled into a ZIP archive.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Upload PDF Document',
+        desc: 'Select or drag-and-drop the PDF containing images.',
+      },
+      {
+        step: 2,
+        title: 'Browse Extracted Gallery',
+        desc: 'Preview extracted photos and figures with page numbers, formats, and dimensions.',
+      },
+      {
+        step: 3,
+        title: 'Download Images or ZIP',
+        desc: 'Download individual image files or click "Download All as ZIP" to save all assets in an archive.',
+      },
+    ],
+    limitations: [
+      'Raw JPEG streams are extracted without re-compression degradation.',
+      'FlateDecode and soft-masked (/SMask) transparency images are decoded into lossless 32-bit PNGs.',
+      'Vector diagrams drawn as lines and shapes are not raster images and cannot be extracted as image files.',
+    ],
+    privacyNotes: [
+      'Image extraction runs entirely inside your browser.',
+      'Zero images or documents are ever uploaded to remote servers.',
+    ],
+    relatedToolIds: ['pdf-to-images', 'extract-text', 'images'],
+  },
+  {
+    toolId: 'extract-links',
+    slug: 'extract-links',
+    name: 'Extract Links',
+    title: 'Extract Links from PDF Online — URL & Hyperlink Finder — OwnPDF',
+    metaDescription:
+      'Extract all clickable links, annotations, internal destinations, and printed URLs from PDF files. Export to CSV, JSON, or TXT.',
+    canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}extract-links/`,
+    h1: 'Extract Links & Hyperlinks from PDF Online',
+    shortDescription:
+      'Discover and export all clickable hyperlink annotations, internal page destinations, and plaintext URLs.',
+    instructions: [
+      {
+        step: 1,
+        title: 'Select PDF',
+        desc: 'Upload the document you want to inspect for links.',
+      },
+      {
+        step: 2,
+        title: 'Explore Link Table',
+        desc: 'Filter by external, internal, or text URLs, and search or test destinations.',
+      },
+      {
+        step: 3,
+        title: 'Export Structured Data',
+        desc: 'Click CSV, JSON, or TXT to download the complete list of extracted URLs.',
+      },
+    ],
+    limitations: [
+      'Distinguishes interactive PDF annotation dictionaries (/Subtype /Link) from plain text URLs.',
+      'Internal destinations link to specific document pages rather than external web addresses.',
+    ],
+    privacyNotes: [
+      'Link extraction occurs entirely in browser memory.',
+      'Testing or clicking links is done directly by your browser; zero data is collected or sent to telemetry endpoints.',
+    ],
+    relatedToolIds: ['extract-text', 'inspect', 'find-replace'],
   },
 ];
 

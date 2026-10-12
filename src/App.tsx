@@ -25,6 +25,12 @@ import { WatermarkTool } from './components/tools/WatermarkTool';
 import { PdfToImagesTool } from './components/tools/PdfToImagesTool';
 import { ExtractTextTool } from './components/tools/ExtractTextTool';
 import { CropTool } from './components/tools/CropTool';
+import { FindReplaceTool } from './components/tools/FindReplaceTool';
+import { ReversePagesTool } from './components/tools/ReversePagesTool';
+import { DeleteBlankPagesTool } from './components/tools/DeleteBlankPagesTool';
+import { ResizeTool } from './components/tools/ResizeTool';
+import { ExtractImagesTool } from './components/tools/ExtractImagesTool';
+import { ExtractLinksTool } from './components/tools/ExtractLinksTool';
 
 const MainAppContent: React.FC = () => {
   const { viewMode, setViewMode, activeTool, isNotFound } = useSession();
@@ -63,6 +69,18 @@ const MainAppContent: React.FC = () => {
         return <ExtractTextTool />;
       case 'crop':
         return <CropTool />;
+      case 'find-replace':
+        return <FindReplaceTool />;
+      case 'reverse-pages':
+        return <ReversePagesTool />;
+      case 'delete-blank-pages':
+        return <DeleteBlankPagesTool />;
+      case 'resize':
+        return <ResizeTool />;
+      case 'extract-images':
+        return <ExtractImagesTool />;
+      case 'extract-links':
+        return <ExtractLinksTool />;
       default:
         return null;
     }

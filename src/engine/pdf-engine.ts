@@ -21,6 +21,13 @@ import type {
   ExtractTextOptions,
   ExtractTextResult,
   CropPdfOptions,
+  ReversePagesOptions,
+  DetectBlankPagesOptions,
+  DetectBlankPagesResult,
+  BlankPageCandidate,
+  BlankPageConfidence,
+  ResizePdfOptions,
+  StandardPageSize,
 } from '../types/engine';
 import { PdfError } from '../types/engine';
 
@@ -938,6 +945,432 @@ export class PdfEngine {
     }
 
     return results;
+  }
+
+  /**
+   * Reverses pages in a PDF document based on selected mode:
+   * - 'all': Inverts entire document sequence (N -> 1)
+   * - 'range': Inverts only a specified page range (e.g. "3-6"), preserving order before and after
+   * - 'duplex-inverted': Interleaves odd front pages with reversed even back pages (for scanner feeds)
+   * Preserves page contents, form fields, page-level annotations, and document metadata.
+   */
+  public async reversePdfPages(
+    fileData: Uint8Array,
+    options: ReversePagesOptions = { mode: 'all' }
+  ): Promise<Uint8Array> {
+    const isEnc = await this.isEncrypted(fileData);
+    if (isEnc) {
+      throw new PdfError('ENCRYPTED_DOCUMENT', 'Please unlock the document before reversing pages.');
+    }
+
+    const srcDoc = await PDFDocument.load(fileData);
+    const totalPages = srcDoc.getPageCount();
+    if (totalPages === 0) {
+      throw new PdfError('CORRUPTED_DOCUMENT', 'Document contains zero pages.');
+    }
+    if (totalPages === 1) {
+      return fileData;
+    }
+
+    let targetIndices: number[] = [];
+
+    if (options.mode === 'all') {
+      targetIndices = Array.from({ length: totalPages }, (_, i) => totalPages - 1 - i);
+    } else if (options.mode === 'range') {
+      if (!options.pageRange || !options.pageRange.trim()) {
+        throw new PdfError('UNSUPPORTED_FORMAT', 'Page range is required for range mode (e.g. "2-5").');
+      }
+      const parsed = this.parsePageRanges(options.pageRange, totalPages);
+      const rangeIndices = parsed.flatMap((p) => p.indices);
+      if (rangeIndices.length <= 1) {
+        throw new PdfError('UNSUPPORTED_FORMAT', 'Page range must contain at least 2 pages to reverse.');
+      }
+      const minIdx = Math.min(...rangeIndices);
+      const maxIdx = Math.max(...rangeIndices);
+
+      targetIndices = Array.from({ length: totalPages }, (_, i) => i);
+      const invertedSubRange = targetIndices.slice(minIdx, maxIdx + 1).reverse();
+      targetIndices.splice(minIdx, invertedSubRange.length, ...invertedSubRange);
+    } else if (options.mode === 'duplex-inverted') {
+      const oddPages: number[] = []; // 0, 2, 4... (Fronts)
+      const evenPages: number[] = []; // 1, 3, 5... (Backs)
+
+      for (let i = 0; i < totalPages; i++) {
+        if (i % 2 === 0) {
+          oddPages.push(i);
+        } else {
+          evenPages.push(i);
+        }
+      }
+
+      const reversedEven = evenPages.reverse();
+      targetIndices = [];
+
+      const maxLen = Math.max(oddPages.length, reversedEven.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < oddPages.length) targetIndices.push(oddPages[i]);
+        if (i < reversedEven.length) targetIndices.push(reversedEven[i]);
+      }
+    }
+
+    const targetDoc = await PDFDocument.create();
+    const copiedPages = await targetDoc.copyPages(srcDoc, targetIndices);
+    for (const page of copiedPages) {
+      targetDoc.addPage(page);
+    }
+
+    const title = srcDoc.getTitle();
+    if (title) targetDoc.setTitle(title);
+    const author = srcDoc.getAuthor();
+    if (author) targetDoc.setAuthor(author);
+    const subject = srcDoc.getSubject();
+    if (subject) targetDoc.setSubject(subject);
+    const keywords = srcDoc.getKeywords();
+    if (keywords) targetDoc.setKeywords(keywords.split(';'));
+    const creator = srcDoc.getCreator();
+    if (creator) targetDoc.setCreator(creator);
+    const producer = srcDoc.getProducer();
+    if (producer) targetDoc.setProducer(producer);
+
+    return targetDoc.save();
+  }
+
+  /**
+   * Corrected Ink Coverage calculation:
+   * Strictly separates opaque white paper background (R>=240, G>=240, B>=240, A>32)
+   * and empty transparent regions (A<=32) from actual ink marks.
+   * Returns ink percentage (0 - 100).
+   */
+  public static calculateInkCoverage(rgbaData: Uint8ClampedArray | Uint8Array): number {
+    const totalPixels = rgbaData.length / 4;
+    if (totalPixels === 0) return 0;
+
+    let inkPixels = 0;
+    for (let i = 0; i < rgbaData.length; i += 4) {
+      const r = rgbaData[i];
+      const g = rgbaData[i + 1];
+      const b = rgbaData[i + 2];
+      const a = rgbaData[i + 3];
+
+      // Transparent pixel -> Not ink
+      if (a <= 32) continue;
+
+      // Opaque white/near-white pixel -> Page background, not ink
+      if (r >= 240 && g >= 240 && b >= 240) continue;
+
+      // Pixel has opacity and deviates from white paper -> Count as ink
+      inkPixels++;
+    }
+
+    return (inkPixels / totalPixels) * 100;
+  }
+
+  /**
+   * Evaluates each page using text glyph count and canvas pixel ink coverage.
+   * Classifies pages into HIGH_CONFIDENCE_BLANK, POSSIBLE_NOISE, and HAS_CONTENT.
+   * Operates as a candidate suggestion engine, requiring explicit user confirmation.
+   */
+  public async detectBlankPages(
+    fileData: Uint8Array,
+    options: DetectBlankPagesOptions = {}
+  ): Promise<DetectBlankPagesResult> {
+    const isEnc = await this.isEncrypted(fileData);
+    if (isEnc) {
+      throw new PdfError('ENCRYPTED_DOCUMENT', 'Please unlock the document before detecting blank pages.');
+    }
+
+    const dataCopy = new Uint8Array(fileData);
+    const loadingTask = pdfjsLib.getDocument({
+      data: dataCopy,
+      disableFontFace: true,
+      isEvalSupported: false,
+    });
+
+    const pdfDoc = await loadingTask.promise;
+    const totalPages = pdfDoc.numPages;
+    const threshold = options.threshold ?? 0.15;
+
+    const candidates: BlankPageCandidate[] = [];
+
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      const pageNum = pageIdx + 1;
+      const page = await pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      const textGlyphCount = (textContent.items || []).reduce(
+        (acc: number, it: any) =>
+          acc + (typeof it?.str === 'string' ? it.str.trim().length : 0),
+        0
+      );
+
+      let inkCoverage = 0;
+
+      // If in browser or canvas environment, render low-res thumbnail to sample pixel ink
+      if (typeof document !== 'undefined') {
+        try {
+          const viewport = page.getViewport({ scale: 0.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          const ctx = canvas.getContext('2d');
+
+          if (ctx) {
+            await page.render({
+              canvasContext: ctx,
+              viewport,
+            } as any).promise;
+
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            inkCoverage = PdfEngine.calculateInkCoverage(imgData.data);
+          }
+        } catch {
+          // Fall back gracefully if canvas rendering is unsupported in environment
+        }
+      }
+
+      let status: BlankPageConfidence = 'HAS_CONTENT';
+
+      if (textGlyphCount === 0 && inkCoverage < 0.05) {
+        status = 'HIGH_CONFIDENCE_BLANK';
+      } else if (textGlyphCount === 0 && inkCoverage <= Math.max(0.35, threshold)) {
+        status = 'POSSIBLE_NOISE';
+      } else {
+        status = 'HAS_CONTENT';
+      }
+
+      const selected = status === 'HIGH_CONFIDENCE_BLANK' || status === 'POSSIBLE_NOISE';
+
+      candidates.push({
+        pageIndex: pageIdx,
+        pageNumber: pageNum,
+        inkCoverage,
+        textGlyphCount,
+        status,
+        selected,
+      });
+    }
+
+    const blankCount = candidates.filter((c) => c.status !== 'HAS_CONTENT').length;
+
+    return {
+      candidates,
+      blankCount,
+      totalPages,
+    };
+  }
+
+  /**
+   * Deletes specific page indices from a PDF document, preserving metadata and remaining pages.
+   */
+  public async deletePages(
+    fileData: Uint8Array,
+    pageIndicesToDelete: number[]
+  ): Promise<Uint8Array> {
+    const isEnc = await this.isEncrypted(fileData);
+    if (isEnc) {
+      throw new PdfError('ENCRYPTED_DOCUMENT', 'Please unlock the document before deleting pages.');
+    }
+
+    const srcDoc = await PDFDocument.load(fileData);
+    const totalPages = srcDoc.getPageCount();
+    const toDeleteSet = new Set(pageIndicesToDelete);
+
+    const remainingIndices: number[] = [];
+    for (let i = 0; i < totalPages; i++) {
+      if (!toDeleteSet.has(i)) {
+        remainingIndices.push(i);
+      }
+    }
+
+    if (remainingIndices.length === 0) {
+      throw new PdfError(
+        'UNSUPPORTED_FORMAT',
+        'Cannot delete all pages in a document. At least one page must remain.'
+      );
+    }
+
+    if (remainingIndices.length === totalPages) {
+      return fileData;
+    }
+
+    const targetDoc = await PDFDocument.create();
+    const copiedPages = await targetDoc.copyPages(srcDoc, remainingIndices);
+    for (const page of copiedPages) {
+      targetDoc.addPage(page);
+    }
+
+    const title = srcDoc.getTitle();
+    if (title) targetDoc.setTitle(title);
+    const author = srcDoc.getAuthor();
+    if (author) targetDoc.setAuthor(author);
+    const subject = srcDoc.getSubject();
+    if (subject) targetDoc.setSubject(subject);
+    const keywords = srcDoc.getKeywords();
+    if (keywords) targetDoc.setKeywords(keywords.split(';'));
+    const creator = srcDoc.getCreator();
+    if (creator) targetDoc.setCreator(creator);
+    const producer = srcDoc.getProducer();
+    if (producer) targetDoc.setProducer(producer);
+
+    return targetDoc.save();
+  }
+
+  public static readonly STANDARD_PAGE_SIZES: Record<StandardPageSize, [number, number]> = {
+    A4: [595.28, 841.89],
+    LETTER: [612.0, 792.0],
+    A3: [841.89, 1190.55],
+    A5: [419.53, 595.28],
+    LEGAL: [612.0, 1008.0],
+    TABLOID: [792.0, 1224.0],
+  };
+
+  /**
+   * Resizes pages to target dimensions using one of three modes:
+   * - 'fit': Scales content proportionally with margins, adding letterbox/pillarbox if aspect ratio changes
+   * - 'fill-crop': Scales content proportionally to cover the page, clipping excess
+   * - 'canvas': Preserves 100% vector scale, centering content within new canvas boundaries
+   */
+  public async resizePdf(
+    fileData: Uint8Array,
+    options: ResizePdfOptions
+  ): Promise<Uint8Array> {
+    const isEnc = await this.isEncrypted(fileData);
+    if (isEnc) {
+      throw new PdfError('ENCRYPTED_DOCUMENT', 'Please unlock the document before resizing.');
+    }
+
+    const srcDoc = await PDFDocument.load(fileData);
+    const totalPages = srcDoc.getPageCount();
+    if (totalPages === 0) {
+      throw new PdfError('CORRUPTED_DOCUMENT', 'Document contains zero pages.');
+    }
+
+    let baseWidth: number;
+    let baseHeight: number;
+
+    if (typeof options.targetSize === 'string') {
+      const sizeTuple = PdfEngine.STANDARD_PAGE_SIZES[options.targetSize];
+      if (!sizeTuple) {
+        throw new PdfError('UNSUPPORTED_FORMAT', `Unsupported page size: ${options.targetSize}`);
+      }
+      [baseWidth, baseHeight] = sizeTuple;
+    } else {
+      baseWidth = options.targetSize.width;
+      baseHeight = options.targetSize.height;
+    }
+
+    const margin = options.margin ?? 0;
+    const mode = options.mode ?? 'fit';
+    const orientation = options.orientation ?? 'keep';
+
+    const targetIndices = options.pageRange
+      ? this.parseTargetIndices(options.pageRange, totalPages)
+      : Array.from({ length: totalPages }, (_, i) => i);
+
+    const targetDoc = await PDFDocument.create();
+
+    for (let i = 0; i < totalPages; i++) {
+      const srcPage = srcDoc.getPage(i);
+      const isTarget = targetIndices.includes(i);
+
+      if (!isTarget) {
+        const [copied] = await targetDoc.copyPages(srcDoc, [i]);
+        targetDoc.addPage(copied);
+        continue;
+      }
+
+      const srcSize = srcPage.getSize();
+      const rot = ((srcPage.getRotation().angle % 360) + 360) % 360;
+      const visualSrcW = rot === 90 || rot === 270 ? srcSize.height : srcSize.width;
+      const visualSrcH = rot === 90 || rot === 270 ? srcSize.width : srcSize.height;
+
+      let targetW = baseWidth;
+      let targetH = baseHeight;
+
+      if (orientation === 'portrait') {
+        targetW = Math.min(baseWidth, baseHeight);
+        targetH = Math.max(baseWidth, baseHeight);
+      } else if (orientation === 'landscape') {
+        targetW = Math.max(baseWidth, baseHeight);
+        targetH = Math.min(baseWidth, baseHeight);
+      } else {
+        const isLandscape = visualSrcW > visualSrcH;
+        targetW = isLandscape ? Math.max(baseWidth, baseHeight) : Math.min(baseWidth, baseHeight);
+        targetH = isLandscape ? Math.min(baseWidth, baseHeight) : Math.max(baseWidth, baseHeight);
+      }
+
+      const hasContents = srcPage.node.Contents() !== undefined;
+      const newPage = targetDoc.addPage([targetW, targetH]);
+
+      if (!hasContents) {
+        continue;
+      }
+
+      const embedded = await targetDoc.embedPage(srcPage);
+      const availW = Math.max(1, targetW - 2 * margin);
+      const availH = Math.max(1, targetH - 2 * margin);
+
+      let scale = 1.0;
+      if (mode === 'fit') {
+        scale = Math.min(availW / visualSrcW, availH / visualSrcH);
+      } else if (mode === 'fill-crop') {
+        scale = Math.max(availW / visualSrcW, availH / visualSrcH);
+      } else if (mode === 'canvas') {
+        scale = 1.0;
+      }
+
+      const drawW = visualSrcW * scale;
+      const drawH = visualSrcH * scale;
+
+      const x = margin + (availW - drawW) / 2;
+      const y = margin + (availH - drawH) / 2;
+
+      const rawW = rot === 90 || rot === 270 ? drawH : drawW;
+      const rawH = rot === 90 || rot === 270 ? drawW : drawH;
+
+      if (rot === 0) {
+        newPage.drawPage(embedded, { x, y, width: drawW, height: drawH });
+      } else if (rot === 90) {
+        newPage.drawPage(embedded, {
+          x: x + drawW,
+          y,
+          width: rawW,
+          height: rawH,
+          rotate: degrees(90),
+        });
+      } else if (rot === 180) {
+        newPage.drawPage(embedded, {
+          x: x + drawW,
+          y: y + drawH,
+          width: rawW,
+          height: rawH,
+          rotate: degrees(180),
+        });
+      } else if (rot === 270) {
+        newPage.drawPage(embedded, {
+          x,
+          y: y + drawH,
+          width: rawW,
+          height: rawH,
+          rotate: degrees(270),
+        });
+      }
+    }
+
+    const title = srcDoc.getTitle();
+    if (title) targetDoc.setTitle(title);
+    const author = srcDoc.getAuthor();
+    if (author) targetDoc.setAuthor(author);
+    const subject = srcDoc.getSubject();
+    if (subject) targetDoc.setSubject(subject);
+    const keywords = srcDoc.getKeywords();
+    if (keywords) targetDoc.setKeywords(keywords.split(';'));
+    const creator = srcDoc.getCreator();
+    if (creator) targetDoc.setCreator(creator);
+    const producer = srcDoc.getProducer();
+    if (producer) targetDoc.setProducer(producer);
+
+    return targetDoc.save();
   }
 }
 

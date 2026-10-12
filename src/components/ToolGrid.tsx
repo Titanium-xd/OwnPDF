@@ -19,6 +19,12 @@ import {
   Images,
   FileCode2,
   Crop,
+  Replace,
+  ArrowDownUp,
+  Trash2,
+  Scaling,
+  ImageDown,
+  Link,
 } from 'lucide-react';
 
 
@@ -146,6 +152,54 @@ export const toolsData: ToolItem[] = [
     description: 'Trim margins or adjust visible PDF boundaries with visual box preview and custom dimensions.',
     icon: <Crop className="w-5 h-5 text-orange-500" />,
     gradient: 'from-orange-500/10 to-orange-500/5',
+  },
+  {
+    id: 'find-replace',
+    name: 'Find & Replace',
+    category: 'Inspect',
+    description: 'Search and replace names, numbers, and text occurrences across pages with visual precision and collision alerts.',
+    icon: <Replace className="w-5 h-5 text-indigo-500" />,
+    gradient: 'from-indigo-500/10 to-indigo-500/5',
+  },
+  {
+    id: 'reverse-pages',
+    name: 'Reverse Pages',
+    category: 'Organize',
+    description: 'Invert page order with 1-click presets: entire document, custom page ranges, or duplex scanner back-sides.',
+    icon: <ArrowDownUp className="w-5 h-5 text-indigo-500" />,
+    gradient: 'from-indigo-500/10 to-indigo-500/5',
+  },
+  {
+    id: 'delete-blank-pages',
+    name: 'Delete Blank Pages',
+    category: 'Organize',
+    description: 'Detect and remove empty or accidental scanner sheets using dual-mode ink-density and text-layer analysis.',
+    icon: <Trash2 className="w-5 h-5 text-rose-500" />,
+    gradient: 'from-rose-500/10 to-rose-500/5',
+  },
+  {
+    id: 'resize',
+    name: 'Resize PDF',
+    category: 'Organize',
+    description: 'Change page dimensions to standard sizes (A4, Letter, A3, Legal) with proportional fitting or canvas padding.',
+    icon: <Scaling className="w-5 h-5 text-blue-500" />,
+    gradient: 'from-blue-500/10 to-blue-500/5',
+  },
+  {
+    id: 'extract-images',
+    name: 'Extract Images',
+    category: 'Convert',
+    description: 'Extract embedded photos, illustrations, and figures in lossless quality, individually or bundled into a ZIP archive.',
+    icon: <ImageDown className="w-5 h-5 text-amber-500" />,
+    gradient: 'from-amber-500/10 to-amber-500/5',
+  },
+  {
+    id: 'extract-links',
+    name: 'Extract Links',
+    category: 'Inspect',
+    description: 'Discover and export all clickable hyperlink annotations, internal page destinations, and plaintext URLs.',
+    icon: <Link className="w-5 h-5 text-teal-500" />,
+    gradient: 'from-teal-500/10 to-teal-500/5',
   },
 ];
 
