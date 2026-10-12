@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://titanium-xd.github.io/OwnPDF/sitemap.xml
