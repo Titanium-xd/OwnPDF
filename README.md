@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="public/ownpdf-mascot.png" alt="OwnPDF Mascot" width="120" style="border-radius: 28px; box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.25);" />
+  <img src="public/lumacut_ownpdf.png" alt="OwnPDF Mascot" width="120" style="border-radius: 28px; box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.25);" />
 
   # OwnPDF
 
