@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { pdfEngine, PdfEngine } from '../engine/pdf-engine';
 import { qpdfClient } from '../engine/qpdf-client';
+import {
+  toolRoutes,
+  homeRoute,
+  getRouteFromPathname,
+  isInvalidRoute,
+  getPathForTool,
+  ToolId,
+} from '../config/routes';
 
-export type ToolId =
-  | 'unlock'
-  | 'protect'
-  | 'merge'
-  | 'split'
-  | 'organize'
-  | 'images'
-  | 'compress'
-  | 'inspect';
+export type { ToolId };
 
 export interface SessionFile {
   id: string;
@@ -46,6 +46,8 @@ interface SessionContextType {
   totalMemoryBytes: number;
   viewMode: 'app' | 'prototype';
   setViewMode: (mode: 'app' | 'prototype') => void;
+  isNotFound: boolean;
+  setIsNotFound: (notFound: boolean) => void;
 
   // Per-Tool File Management (Priority 7)
   toolFiles: Record<string, SessionFile[]>;
@@ -73,9 +75,19 @@ function getInitialTheme(): 'light' | 'dark' {
 }
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const baseUrl = import.meta.env.BASE_URL || '/';
+
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
   const [files, setFiles] = useState<SessionFile[]>([]);
-  const [activeTool, setActiveTool] = useState<ToolId | null>(null);
+  const [activeTool, setActiveToolState] = useState<ToolId | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const initialRoute = getRouteFromPathname(window.location.pathname, baseUrl);
+    return initialRoute ? initialRoute.toolId : null;
+  });
+  const [isNotFound, setIsNotFound] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return isInvalidRoute(window.location.pathname, baseUrl);
+  });
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'app' | 'prototype'>('app');
 
@@ -83,6 +95,62 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [toolFiles, setToolFiles] = useState<Record<string, SessionFile[]>>({});
   const [toolSource, setToolSourceState] = useState<Record<string, 'home' | 'tool' | null>>({});
   const [toolActiveFileId, setToolActiveFileIdState] = useState<Record<string, string | null>>({});
+
+  const updateDocumentMetadata = useCallback((tool: ToolId | null) => {
+    if (typeof document === 'undefined') return;
+    if (tool) {
+      const route = toolRoutes.find((r) => r.toolId === tool);
+      if (route) {
+        document.title = route.title;
+        const canonicalEl = document.querySelector('link[rel="canonical"]');
+        if (canonicalEl) {
+          canonicalEl.setAttribute('href', route.canonicalUrl);
+        }
+      }
+    } else {
+      document.title = homeRoute.title;
+      const canonicalEl = document.querySelector('link[rel="canonical"]');
+      if (canonicalEl) {
+        canonicalEl.setAttribute('href', homeRoute.canonicalUrl);
+      }
+    }
+  }, []);
+
+  const setActiveTool = useCallback(
+    (tool: ToolId | null) => {
+      setActiveToolState(tool);
+      setIsNotFound(false);
+      if (typeof window !== 'undefined') {
+        const targetPath = getPathForTool(tool, baseUrl);
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({}, '', targetPath);
+        }
+      }
+      updateDocumentMetadata(tool);
+    },
+    [baseUrl, updateDocumentMetadata]
+  );
+
+  // Synchronize browser history (Back / Forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = getRouteFromPathname(window.location.pathname, baseUrl);
+      const invalid = isInvalidRoute(window.location.pathname, baseUrl);
+      setIsNotFound(invalid);
+      setActiveToolState(route ? route.toolId : null);
+      updateDocumentMetadata(route ? route.toolId : null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [baseUrl, updateDocumentMetadata]);
+
+  // Initial metadata sync on mount if initial tool was set
+  useEffect(() => {
+    if (activeTool) {
+      updateDocumentMetadata(activeTool);
+    }
+  }, []);
 
   // Synchronize document theme class and localStorage
   const applyTheme = useCallback((targetTheme: 'light' | 'dark') => {
@@ -344,7 +412,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setToolActiveFileIdState({});
     setActiveTool(null);
     qpdfClient.terminate();
-  }, [files, toolFiles]);
+  }, [files, toolFiles, setActiveTool]);
 
   const selectedFile = files.find((f) => f.id === selectedFileId) || files[0] || null;
 
@@ -373,6 +441,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         totalMemoryBytes,
         viewMode,
         setViewMode,
+        isNotFound,
+        setIsNotFound,
         toolFiles,
         toolSource,
         toolActiveFileId,

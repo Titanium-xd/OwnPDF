@@ -3,6 +3,7 @@ import { useSession } from '../context/SessionContext';
 import { Sun, Moon, Trash2, Info } from 'lucide-react';
 import { Logo } from './Logo';
 import { siteConfig } from '../config/site';
+import { getPathForTool, isModifiedEvent } from '../config/routes';
 import { PrivacyModal } from './modals/PrivacyModal';
 import { AboutModal } from './modals/AboutModal';
 
@@ -45,8 +46,14 @@ export const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-6">
-            <button
-              onClick={() => setActiveTool(null)}
+            <a
+              href={getPathForTool(null, import.meta.env.BASE_URL || '/')}
+              onClick={(e) => {
+                if (isModifiedEvent(e)) return;
+                e.preventDefault();
+                setActiveTool(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className="flex items-center gap-3 text-left group"
               aria-label="Return to OwnPDF home"
             >
@@ -59,7 +66,7 @@ export const Header: React.FC = () => {
                   Your PDFs. Your device. Your privacy.
                 </p>
               </div>
-            </button>
+            </a>
 
             {/* Subtle Inline Privacy Indicator */}
             <button

@@ -8,6 +8,7 @@ import { ToolGrid } from './components/ToolGrid';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { Footer } from './components/Footer';
 import { PrototypeView } from './components/PrototypeView';
+import { NotFoundView } from './components/NotFoundView';
 
 // Dedicated Tool Views
 import { UnlockTool } from './components/tools/UnlockTool';
@@ -20,7 +21,7 @@ import { CompressTool } from './components/tools/CompressTool';
 import { InspectTool } from './components/tools/InspectTool';
 
 const MainAppContent: React.FC = () => {
-  const { viewMode, setViewMode, activeTool } = useSession();
+  const { viewMode, setViewMode, activeTool, isNotFound } = useSession();
 
   if (viewMode === 'prototype') {
     return <PrototypeView onProceedToApp={() => setViewMode('app')} />;
@@ -54,7 +55,9 @@ const MainAppContent: React.FC = () => {
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full space-y-12">
-        {activeTool ? (
+        {isNotFound ? (
+          <NotFoundView />
+        ) : activeTool ? (
           <WorkspaceLayout toolId={activeTool}>
             {renderActiveTool()}
           </WorkspaceLayout>

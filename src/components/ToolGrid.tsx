@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
 import type { ToolId } from '../context/SessionContext';
+import { getPathForTool, isModifiedEvent } from '../config/routes';
 import {
   Unlock,
   Lock,
@@ -147,9 +148,15 @@ export const ToolGrid: React.FC = () => {
       {/* Grid of Tool Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filteredTools.map((tool) => (
-          <div
+          <a
             key={tool.id}
-            onClick={() => setActiveTool(tool.id)}
+            href={getPathForTool(tool.id, import.meta.env.BASE_URL || '/')}
+            onClick={(e) => {
+              if (isModifiedEvent(e)) return;
+              e.preventDefault();
+              setActiveTool(tool.id);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700/80 hover:shadow-xl hover:shadow-sky-500/10 transition-all duration-300 cursor-pointer flex flex-col justify-between"
           >
             <div>
@@ -178,7 +185,7 @@ export const ToolGrid: React.FC = () => {
                 Launch <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </div>
