@@ -131,7 +131,7 @@ const MainAppContent: React.FC = () => {
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto">
-                Unlock password-protected e-Aadhaar and bank statements, merge, split, reorganize, convert, and inspect PDFs locally in your browser. Zero uploads. Zero telemetry.
+                Unlock password-protected e-Aadhaar and bank statements, merge, split, reorganize, convert, inspect, and many other tools in your way—all locally in your browser. Zero uploads. Zero telemetry.
               </p>
             </div>
 

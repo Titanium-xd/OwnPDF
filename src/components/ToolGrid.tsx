@@ -252,7 +252,7 @@ export const toolsData: ToolItem[] = [
     category: 'Security',
     description: 'Permanently black out sensitive text and graphics by rebuilding affected pages from sanitized raster images.',
     icon: <ShieldAlert className="w-5 h-5 text-rose-500" />,
-    badge: 'Security',
+    badge: 'Under Development',
     gradient: 'from-rose-500/10 to-rose-500/5',
   },
 ];
@@ -329,7 +329,13 @@ export const ToolGrid: React.FC = () => {
                   {tool.icon}
                 </div>
                 {tool.badge && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      tool.badge === 'Under Development'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300/80 dark:border-amber-700/80'
+                        : 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60'
+                    }`}
+                  >
                     {tool.badge}
                   </span>
                 )}

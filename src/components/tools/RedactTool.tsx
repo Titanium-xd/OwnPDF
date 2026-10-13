@@ -697,6 +697,20 @@ export const RedactTool: React.FC = () => {
 
   return (
     <div className="w-full max-w-[1600px] mx-auto space-y-4">
+      {/* Under Development Notice */}
+      <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+          <div>
+            <span className="font-semibold text-amber-950 dark:text-amber-100">Under Development:</span>{' '}
+            Redact PDF is currently in active development. You can freely use all redaction tools, shape drawings, and irreversible raster exports, but you may occasionally encounter visual preview quirks or minor bugs.
+          </div>
+        </div>
+        <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-amber-200/80 dark:bg-amber-900/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
+          Beta
+        </span>
+      </div>
+
       <ToolFileSelector
         toolId="redact"
         description="Permanently redact sensitive text, numbers, and graphics by rebuilding affected pages from sanitized raster images."

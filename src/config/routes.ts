@@ -55,7 +55,7 @@ export const BASE_PATH = '/OwnPDF/';
 export const homeRoute: HomeRoute = {
   title: 'OwnPDF — Free Private PDF Tools',
   metaDescription:
-    'Merge, split, organize, compress, protect and unlock PDFs with OwnPDF. Convert images to PDF and process files locally in your browser for greater privacy.',
+    'Free, private, local-first PDF toolkit with 26 browser-based tools. Unlock e-Aadhaar, protect, merge, split, compress, redact, edit, and convert PDFs 100% on your device with zero uploads.',
   canonicalUrl: `${PRODUCTION_ORIGIN}${BASE_PATH}`,
   h1: 'Free Private PDF Tools. Your device. Your privacy.',
 };
