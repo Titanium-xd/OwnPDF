@@ -148,7 +148,7 @@ function seoPagesPlugin(): Plugin {
 }
 
 export default defineConfig({
-  base: process.env.BASE_PATH || (process.env.GITHUB_ACTIONS ? '/OwnPDF/' : '/'),
+  base: process.env.BASE_PATH || '/OwnPDF/',
   plugins: [react(), seoPagesPlugin()],
   resolve: {
     alias: {

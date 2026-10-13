@@ -1,8 +1,23 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
+/**
+ * Returns the normalized base path with a trailing slash.
+ * In production builds on GitHub Pages this resolves to '/OwnPDF/'.
+ */
+export function getBaseAssetUrl(): string {
+  let base =
+    typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
+      ? import.meta.env.BASE_URL
+      : '/OwnPDF/';
+  if (!base.endsWith('/')) {
+    base += '/';
+  }
+  return base;
+}
+
 // Configure the worker URL to point to our local static asset in public/
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `${getBaseAssetUrl()}pdf.worker.min.mjs`;
 }
 
 /**
@@ -11,7 +26,7 @@ if (typeof window !== 'undefined') {
  */
 export function getPdfJsLoadingParams(data: Uint8Array) {
   const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined' && 'fonts' in document;
-  const baseUrl = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/OwnPDF/';
+  const baseUrl = getBaseAssetUrl();
   return {
     data: new Uint8Array(data),
     // Critical: enable @font-face in browser so embedded subset fonts render correctly on canvas.
@@ -160,4 +175,62 @@ export function clearCanvas(canvas: HTMLCanvasElement | null): void {
   }
   canvas.width = 0;
   canvas.height = 0;
+}
+
+/**
+ * Renders a lightweight miniature page thumbnail to a canvas element.
+ * Cancels any active render task on the target canvas and disables annotations for performance.
+ */
+export async function renderThumbnailToCanvas(
+  pdfDoc: pdfjsLib.PDFDocumentProxy,
+  pageNumber: number,
+  canvas: HTMLCanvasElement,
+  maxDimension: number = 130
+): Promise<void> {
+  const ongoing = activeRenderTasks.get(canvas);
+  if (ongoing) {
+    try {
+      ongoing.cancel();
+    } catch {}
+    activeRenderTasks.delete(canvas);
+  }
+
+  const page = await pdfDoc.getPage(pageNumber);
+  const unscaledViewport = page.getViewport({ scale: 1.0 });
+  const maxSide = Math.max(unscaledViewport.width, unscaledViewport.height);
+  const scale = maxDimension / maxSide;
+  const viewport = page.getViewport({ scale });
+
+  const outputScale = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  canvas.width = Math.floor(viewport.width * outputScale);
+  canvas.height = Math.floor(viewport.height * outputScale);
+  canvas.style.width = `${Math.floor(viewport.width)}px`;
+  canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  ctx.save();
+  ctx.scale(outputScale, outputScale);
+
+  const renderTask = page.render({
+    canvasContext: ctx,
+    viewport,
+    annotationMode: 0,
+  });
+  activeRenderTasks.set(canvas, renderTask);
+
+  try {
+    await renderTask.promise;
+  } catch (err: any) {
+    if (err?.name === 'RenderingCancelledException') {
+      return;
+    }
+    throw err;
+  } finally {
+    ctx.restore();
+    if (activeRenderTasks.get(canvas) === renderTask) {
+      activeRenderTasks.delete(canvas);
+    }
+  }
 }

@@ -365,4 +365,57 @@ describe('Redact Rendering & Document Session Verification', () => {
     const attachments = await exportedDoc.getAttachments();
     expect(attachments).toBeNull();
   });
+
+  it('resolves asset URLs under base path without root-relative drift', async () => {
+    const { getBaseAssetUrl, getPdfJsLoadingParams } = await import('../../src/engine/preview-renderer');
+    const base = getBaseAssetUrl();
+    expect(base.endsWith('/')).toBe(true);
+
+    const dummy = new Uint8Array([1, 2, 3]);
+    const params = getPdfJsLoadingParams(dummy);
+
+    if (params.cMapUrl) {
+      expect(params.cMapUrl.startsWith(base)).toBe(true);
+      expect(params.cMapUrl.endsWith('cmaps/')).toBe(true);
+    }
+    if (params.standardFontDataUrl) {
+      expect(params.standardFontDataUrl.startsWith(base)).toBe(true);
+      expect(params.standardFontDataUrl.endsWith('standard_fonts/')).toBe(true);
+    }
+  });
+
+  it('renders lightweight page thumbnails to canvas with cancellation safety', async () => {
+    if (typeof (globalThis as any).Path2D === 'undefined') {
+      (globalThis as any).Path2D = class Path2D {};
+    }
+    const { renderThumbnailToCanvas } = await import('../../src/engine/preview-renderer');
+    const pdfBytes = await createSampleMultipagePdf(3);
+    const pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+
+    const mockThumbnailCanvas = {
+      width: 0,
+      height: 0,
+      style: { width: '', height: '' },
+      getContext: () => mockCtx,
+    } as any;
+
+    const mockCtx: any = new Proxy(
+      {
+        canvas: mockThumbnailCanvas,
+        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+      },
+      {
+        get(target, prop) {
+          if (prop in target) return (target as any)[prop];
+          return () => {};
+        },
+      }
+    );
+
+    await renderThumbnailToCanvas(pdfDoc, 1, mockThumbnailCanvas, 130);
+    expect(mockThumbnailCanvas.width).toBeGreaterThan(0);
+    expect(mockThumbnailCanvas.height).toBeGreaterThan(0);
+    // Height should be roughly bounded by maxDimension 130
+    expect(parseInt(mockThumbnailCanvas.style.height)).toBeLessThanOrEqual(130);
+  });
 });

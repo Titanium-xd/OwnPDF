@@ -3,6 +3,8 @@ import { useSession } from '../../context/SessionContext';
 import { redactEngine } from '../../engine/redact-engine';
 import {
   renderPdfPageToCanvas,
+  renderThumbnailToCanvas,
+  clearCanvas,
   PdfDocumentSession,
 } from '../../engine/preview-renderer';
 import { ToolFileSelector } from '../ToolFileSelector';
@@ -26,6 +28,7 @@ import {
   Type,
   PanelLeftClose,
   PanelLeft,
+  AlertTriangle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -44,6 +47,130 @@ const HANDLES: HandleType[] = [
   { cursor: 'nesw-resize', position: 'sw' },
   { cursor: 'ew-resize', position: 'w' },
 ];
+
+interface PageThumbnailItemProps {
+  pageNumber: number;
+  pdfDoc: pdfjsLib.PDFDocumentProxy | null;
+  isActive: boolean;
+  pageBoxes: RedactionBox[];
+  onClick: () => void;
+}
+
+const PageThumbnailItem: React.FC<PageThumbnailItemProps> = ({
+  pageNumber,
+  pdfDoc,
+  isActive,
+  pageBoxes,
+  onClick,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [aspectRatio, setAspectRatio] = useState<number>(1 / 1.414);
+  const [isRendered, setIsRendered] = useState<boolean>(false);
+  const [hasError, setHasError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const canvas = canvasRef.current;
+    if (!canvas || !pdfDoc) return;
+
+    renderThumbnailToCanvas(pdfDoc, pageNumber, canvas, 130)
+      .then(() => {
+        if (!isCancelled) {
+          setIsRendered(true);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled && err?.name !== 'RenderingCancelledException') {
+          console.warn(`Thumbnail render error for page ${pageNumber}:`, err);
+          setHasError(true);
+        }
+      });
+
+    pdfDoc
+      .getPage(pageNumber)
+      .then((p) => {
+        if (!isCancelled) {
+          const vp = p.getViewport({ scale: 1.0 });
+          if (vp.width && vp.height) {
+            setAspectRatio(vp.width / vp.height);
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+      clearCanvas(canvas);
+    };
+  }, [pdfDoc, pageNumber]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-xl p-2 transition-all group flex flex-col items-center gap-1.5 border ${
+        isActive
+          ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-500 shadow-xs ring-1 ring-rose-500/50'
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+      }`}
+    >
+      <div
+        className="relative w-full bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-2xs"
+        style={{ aspectRatio: `${aspectRatio}` }}
+      >
+        <canvas ref={canvasRef} className="w-full h-full object-contain block" />
+
+        {!isRendered && !hasError && (
+          <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 animate-pulse flex items-center justify-center">
+            <span className="text-[10px] font-mono text-slate-400">P. {pageNumber}</span>
+          </div>
+        )}
+
+        {hasError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+            <span className="text-[10px] font-mono text-slate-400">P. {pageNumber}</span>
+          </div>
+        )}
+
+        {/* Synchronized miniature redaction overlay on thumbnail */}
+        {pageBoxes.length > 0 && (
+          <div className="absolute inset-0 bg-transparent pointer-events-none">
+            {pageBoxes.map((b) => (
+              <div
+                key={b.id}
+                className={`absolute bg-black/90 ${
+                  b.shapeType === 'circle' ? 'rounded-full' : ''
+                }`}
+                style={{
+                  left: `${Math.max(0, Math.min(90, (b.x / 595) * 100))}%`,
+                  bottom: `${Math.max(0, Math.min(90, (b.y / 842) * 100))}%`,
+                  width: `${Math.max(6, Math.min(90, (b.width / 595) * 100))}%`,
+                  height: `${Math.max(4, Math.min(90, (b.height / 842) * 100))}%`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between w-full px-1 text-[11px]">
+        <span
+          className={`font-semibold ${
+            isActive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          Page {pageNumber}
+        </span>
+        {pageBoxes.length > 0 && (
+          <span className="text-[10px] px-1.5 py-0.2 bg-slate-900 text-white rounded-full font-mono">
+            {pageBoxes.length}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+};
+
 
 export const RedactTool: React.FC = () => {
   const { getToolState } = useSession();
@@ -77,6 +204,9 @@ export const RedactTool: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isRenderingPage, setIsRenderingPage] = useState<boolean>(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [resizeNonce, setResizeNonce] = useState<number>(0);
 
   // Refs for rendering and interaction
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -148,13 +278,34 @@ export const RedactTool: React.FC = () => {
         }
       })
       .catch((err) => {
-        if (isMounted) console.error('Failed to load PDF session:', err);
+        if (isMounted) {
+          console.error('Failed to load PDF session:', err);
+          setRenderError(err?.message || 'Failed to initialize PDF session');
+        }
       });
 
     return () => {
       isMounted = false;
     };
   }, [activeFile?.id]);
+
+  // Handle responsive container resizing
+  useEffect(() => {
+    if (fitMode === 'custom' || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current;
+    let timer: any = null;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setResizeNonce((n) => n + 1);
+      }, 150);
+    });
+    observer.observe(el);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [fitMode]);
 
   // 2. Render current page canvas and text layer
   useEffect(() => {
@@ -165,56 +316,93 @@ export const RedactTool: React.FC = () => {
     const textLayerDiv = textLayerRef.current;
     if (!canvas) return;
 
-    // Calculate responsive scale if fitMode is set
-    let activeScale = scale;
-    if (fitMode === 'fit-width' && scrollContainerRef.current) {
-      const containerWidth = scrollContainerRef.current.clientWidth - 48; // padding
-      pdfDoc.getPage(currentPage).then((p) => {
-        const unscaledVp = p.getViewport({ scale: 1.0 });
-        const targetScale = Math.max(0.4, Math.min(2.5, containerWidth / unscaledVp.width));
-        setScale(Number(targetScale.toFixed(2)));
-      });
-      return;
-    }
+    setIsRenderingPage(true);
+    setRenderError(null);
 
-    renderPdfPageToCanvas(activeFile.data, currentPage, canvas, {
-      scale: activeScale,
-      pdfDoc,
-    })
-      .then(async (result) => {
+    const executeRender = async () => {
+      try {
+        const page = await pdfDoc.getPage(currentPage);
+        if (isCancelled) return;
+
+        let activeScale = scale;
+        if (scrollContainerRef.current) {
+          const containerWidth = scrollContainerRef.current.clientWidth - 48; // padding
+          const containerHeight = scrollContainerRef.current.clientHeight - 48;
+          const unscaledVp = page.getViewport({ scale: 1.0 });
+
+          if (fitMode === 'fit-width' && containerWidth > 50) {
+            const target = Math.max(0.3, Math.min(3.0, containerWidth / unscaledVp.width));
+            activeScale = Number(target.toFixed(2));
+          } else if (fitMode === 'fit-page' && containerWidth > 50 && containerHeight > 50) {
+            const scaleW = containerWidth / unscaledVp.width;
+            const scaleH = containerHeight / unscaledVp.height;
+            const target = Math.max(0.3, Math.min(3.0, Math.min(scaleW, scaleH)));
+            activeScale = Number(target.toFixed(2));
+          }
+        }
+
+        // Render page to canvas with activeScale
+        const result = await renderPdfPageToCanvas(activeFile.data, currentPage, canvas, {
+          scale: activeScale,
+          pdfDoc,
+        });
+
         if (isCancelled) return;
         setPageViewport(result.viewport);
 
+        // Keep toolbar scale in sync if in fit mode
+        if (fitMode !== 'custom' && scale !== activeScale) {
+          setScale(activeScale);
+        }
+
         // Render official PDF.js TextLayer
-        if (textLayerDiv) {
+        if (textLayerDiv && !isCancelled) {
           textLayerDiv.innerHTML = '';
           textLayerDiv.style.width = `${Math.floor(result.viewport.width)}px`;
           textLayerDiv.style.height = `${Math.floor(result.viewport.height)}px`;
 
           try {
-            const textContent = await result.page.getTextContent();
+            const textContent = await page.getTextContent();
             if (isCancelled) return;
 
-            const textLayer = new (pdfjsLib as any).TextLayer({
-              textContentSource: textContent,
-              container: textLayerDiv,
-              viewport: result.viewport,
-            });
-
-            await textLayer.render();
+            const TextLayerClass = (pdfjsLib as any).TextLayer;
+            if (TextLayerClass) {
+              const textLayer = new TextLayerClass({
+                textContentSource: textContent,
+                container: textLayerDiv,
+                viewport: result.viewport,
+              });
+              await textLayer.render();
+            }
           } catch (err: any) {
             console.warn('Text layer render notice:', err?.message);
           }
         }
-      })
-      .catch((err) => {
-        if (!isCancelled) console.error('Page render error:', err);
-      });
+      } catch (err: any) {
+        if (!isCancelled && err?.name !== 'RenderingCancelledException') {
+          console.error('Page render error:', err);
+          setRenderError(err?.message || 'Failed to render PDF page');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsRenderingPage(false);
+        }
+      }
+    };
+
+    executeRender();
 
     return () => {
       isCancelled = true;
     };
-  }, [activeFile?.id, pdfDoc, currentPage, scale, fitMode]);
+  }, [
+    activeFile?.id,
+    pdfDoc,
+    currentPage,
+    fitMode === 'custom' ? scale : null,
+    fitMode,
+    resizeNonce,
+  ]);
 
   // 3. Text Selection to Redaction Regions handler
   const handleTextLayerMouseUp = () => {
@@ -724,51 +912,14 @@ export const RedactTool: React.FC = () => {
                   const pageBoxes = boxes.filter((b) => b.pageNumber === pNum);
 
                   return (
-                    <button
+                    <PageThumbnailItem
                       key={pNum}
-                      type="button"
+                      pageNumber={pNum}
+                      pdfDoc={pdfDoc}
+                      isActive={isActive}
+                      pageBoxes={pageBoxes}
                       onClick={() => setCurrentPage(pNum)}
-                      className={`w-full text-left rounded-xl p-2 transition-all group flex flex-col items-center gap-1.5 border ${
-                        isActive
-                          ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-500 shadow-xs ring-1 ring-rose-500/50'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="relative w-full aspect-[1/1.4] bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-2xs">
-                        <span className="text-[10px] font-mono text-slate-400">P. {pNum}</span>
-
-                        {/* Synchronized miniature redaction overlay on thumbnail */}
-                        {pageBoxes.length > 0 && (
-                          <div className="absolute inset-0 bg-transparent pointer-events-none">
-                            {pageBoxes.map((b) => (
-                              <div
-                                key={b.id}
-                                className={`absolute bg-black/90 ${
-                                  b.shapeType === 'circle' ? 'rounded-full' : ''
-                                }`}
-                                style={{
-                                  left: `${Math.max(0, Math.min(90, (b.x / 595) * 100))}%`,
-                                  bottom: `${Math.max(0, Math.min(90, (b.y / 842) * 100))}%`,
-                                  width: `${Math.max(6, Math.min(90, (b.width / 595) * 100))}%`,
-                                  height: `${Math.max(4, Math.min(90, (b.height / 842) * 100))}%`,
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between w-full px-1 text-[11px]">
-                        <span className={`font-semibold ${isActive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                          Page {pNum}
-                        </span>
-                        {pageBoxes.length > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.2 bg-slate-900 text-white rounded-full font-mono">
-                            {pageBoxes.length}
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                    />
                   );
                 })}
               </div>
@@ -777,8 +928,24 @@ export const RedactTool: React.FC = () => {
             {/* Central Document Page Viewer */}
             <div
               ref={scrollContainerRef}
-              className="flex-1 bg-slate-100/90 dark:bg-slate-950 overflow-auto flex items-center justify-center p-8 relative"
+              className="flex-1 bg-slate-100/90 dark:bg-slate-950 overflow-auto flex flex-col items-center justify-center p-8 relative"
             >
+              {renderError && (
+                <div className="mb-4 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between gap-3 max-w-xl w-full shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{renderError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResizeNonce((n) => n + 1)}
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold shrink-0"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               <div
                 ref={pageContainerRef}
                 className="relative bg-white shadow-xl rounded-sm select-none shrink-0"
@@ -789,6 +956,16 @@ export const RedactTool: React.FC = () => {
               >
                 {/* 1. PDF Canvas Layer */}
                 <canvas ref={mainCanvasRef} className="block select-none pointer-events-none" />
+
+                {/* Loading state indicator */}
+                {isRenderingPage && (
+                  <div className="absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-[1px] flex items-center justify-center pointer-events-none z-20 transition-opacity">
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white dark:bg-slate-900 shadow-lg text-xs font-medium text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                      Rendering Page {currentPage}...
+                    </div>
+                  </div>
+                )}
 
                 {/* 2. PDF.js Native TextLayer */}
                 <div
