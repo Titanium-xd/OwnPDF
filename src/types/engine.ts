@@ -454,6 +454,9 @@ export interface AddBookmarksResult {
 }
 
 // Phase 5: Redact PDF Types
+export type RedactionShapeType = 'rectangle' | 'square' | 'circle' | 'ellipse';
+export type RedactionMode = 'select-text' | 'rectangle' | 'square' | 'circle' | 'ellipse';
+
 export interface RedactionBox {
   id: string;
   pageIndex: number; // 0-indexed
@@ -462,7 +465,10 @@ export interface RedactionBox {
   y: number;
   width: number;
   height: number;
+  shapeType?: RedactionShapeType; // default 'rectangle'
   coordinateSpace?: 'viewport' | 'pdf';
+  source?: 'draw' | 'text-selection';
+  textSnippet?: string;
 }
 
 export interface RedactOptions {

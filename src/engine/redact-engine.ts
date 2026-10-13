@@ -6,6 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import type { RedactionBox, RedactOptions, RedactResult } from '../types/engine';
 import { PdfError } from '../types/engine';
 import { PdfEngine } from './pdf-engine';
+import { getPdfJsLoadingParams } from './preview-renderer';
 
 export class RedactEngine {
   private pdfEngine = new PdfEngine();
@@ -41,12 +42,8 @@ export class RedactEngine {
       };
     }
 
-    const dataCopy = new Uint8Array(fileData);
-    const loadingTask = pdfjsLib.getDocument({
-      data: dataCopy,
-      disableFontFace: true,
-      isEvalSupported: false,
-    });
+    const loadingParams = getPdfJsLoadingParams(fileData);
+    const loadingTask = pdfjsLib.getDocument(loadingParams);
 
     const pdfDoc = await loadingTask.promise;
     const totalPages = pdfDoc.numPages;
@@ -94,26 +91,43 @@ export class RedactEngine {
               annotationMode: (pdfjsLib as any).AnnotationMode?.ENABLE ?? 1,
             } as any).promise;
 
-            // 2. Burn solid black redaction boxes directly into pixel canvas
+            // 2. Burn solid black redaction shapes directly into pixel canvas
             ctx.fillStyle = '#000000';
             for (const b of pageBoxes) {
+              let rx = 0;
+              let ry = 0;
+              let rw = 0;
+              let rh = 0;
+
               if (b.coordinateSpace === 'pdf') {
                 // PDF user-space coordinates (bottom-left origin, unrotated)
                 // Convert to viewport canvas coordinates
                 const pdfRect = [b.x, b.y, b.x + b.width, b.y + b.height];
                 const vpRect = viewport.convertToViewportRectangle(pdfRect);
-                const rx = Math.min(vpRect[0], vpRect[2]);
-                const ry = Math.min(vpRect[1], vpRect[3]);
-                const rw = Math.abs(vpRect[2] - vpRect[0]);
-                const rh = Math.abs(vpRect[3] - vpRect[1]);
-                ctx.fillRect(rx, ry, rw, rh);
+                rx = Math.min(vpRect[0], vpRect[2]);
+                ry = Math.min(vpRect[1], vpRect[3]);
+                rw = Math.abs(vpRect[2] - vpRect[0]);
+                rh = Math.abs(vpRect[3] - vpRect[1]);
               } else {
                 // Viewport coordinates (top-left origin at 72 DPI)
-                const rx = b.x * scale;
-                const ry = b.y * scale;
-                const rw = b.width * scale;
-                const rh = b.height * scale;
-                ctx.fillRect(rx, ry, rw, rh);
+                rx = b.x * scale;
+                ry = b.y * scale;
+                rw = b.width * scale;
+                rh = b.height * scale;
+              }
+
+              if (b.shapeType === 'circle' || b.shapeType === 'ellipse') {
+                ctx.beginPath();
+                const radiusX = rw / 2;
+                const radiusY = b.shapeType === 'circle' ? radiusX : rh / 2;
+                const centerX = rx + radiusX;
+                const centerY = ry + radiusY;
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.fill();
+              } else {
+                // Rectangle or Square
+                const finalH = b.shapeType === 'square' ? rw : rh;
+                ctx.fillRect(rx, ry, rw, finalH);
               }
             }
 
