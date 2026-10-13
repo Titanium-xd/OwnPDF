@@ -29,7 +29,7 @@ export const Logo: React.FC<LogoProps> = ({
     lg: 'w-11 h-11 sm:w-13 sm:h-13',
   };
 
-  const mascotSrc = `${import.meta.env.BASE_URL}ownpdf-mascot.png`;
+  const mascotSrc = `${import.meta.env.BASE_URL}lumacut_ownpdf.png`;
 
   if (!withContainer) {
     return (

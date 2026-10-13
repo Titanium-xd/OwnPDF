@@ -213,10 +213,18 @@ export interface TextMatchOccurrence {
   snippet: string;
   status: MatchStatus;
   collisionWarning?: boolean;
+  overflowWarning?: boolean;
+  overflowAmount?: number;
+  availableWidth?: number;
+  replacementNaturalWidth?: number;
+  fitScale?: number;
+  fontName?: string;
   isConflicting?: boolean;
   conflictReason?: string;
   selected?: boolean;
 }
+
+export type FindReplaceFitMode = 'fit-to-space' | 'keep-size';
 
 export interface FindReplaceOptions {
   searchQuery?: string;
@@ -225,6 +233,7 @@ export interface FindReplaceOptions {
   rules?: FindReplaceRule[];
   selectedOccurrenceIds?: string[];
   backgroundColor?: { r: number; g: number; b: number };
+  fitMode?: FindReplaceFitMode;
 }
 
 export interface RuleReport {

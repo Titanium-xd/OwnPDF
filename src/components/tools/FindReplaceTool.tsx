@@ -3,7 +3,7 @@ import { useSession } from '../../context/SessionContext';
 import { findReplaceEngine } from '../../engine/find-replace';
 import { ToolFileSelector } from '../ToolFileSelector';
 import { downloadPdf, sanitizeDownloadFilename } from '../../utils/download';
-import type { TextMatchOccurrence, FindReplaceRule, RuleReport } from '../../types/engine';
+import type { TextMatchOccurrence, FindReplaceRule, RuleReport, FindReplaceFitMode } from '../../types/engine';
 import {
   Search,
   Download,
@@ -27,6 +27,7 @@ export const FindReplaceTool: React.FC = () => {
     { id: 'rule_1', searchQuery: '', replaceText: '', matchCase: false },
   ]);
   const [bgHex, setBgHex] = useState('#FFFFFF');
+  const [fitMode, setFitMode] = useState<FindReplaceFitMode>('fit-to-space');
 
   const [isSearching, setIsSearching] = useState(false);
   const [isReplacing, setIsReplacing] = useState(false);
@@ -137,6 +138,7 @@ export const FindReplaceTool: React.FC = () => {
         rules: activeRules,
         selectedOccurrenceIds: Array.from(selectedIds),
         backgroundColor: bgColor,
+        fitMode,
       });
 
       const baseName = activeFile.name.replace(/\.[^/.]+$/, '');
@@ -259,17 +261,32 @@ export const FindReplaceTool: React.FC = () => {
 
             {/* Options & Search Action Bar */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-600 dark:text-slate-400">Background Patch Color:</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="color"
-                    value={bgHex}
-                    onChange={(e) => setBgHex(e.target.value)}
-                    className="w-7 h-7 rounded border border-slate-300 cursor-pointer p-0 bg-transparent"
-                    title="Choose background patch color"
-                  />
-                  <span className="text-xs font-mono text-slate-500 uppercase">{bgHex}</span>
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Background Patch Color:</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="color"
+                      value={bgHex}
+                      onChange={(e) => setBgHex(e.target.value)}
+                      className="w-7 h-7 rounded border border-slate-300 cursor-pointer p-0 bg-transparent"
+                      title="Choose background patch color"
+                    />
+                    <span className="text-xs font-mono text-slate-500 uppercase">{bgHex}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Fit Mode:</span>
+                  <select
+                    value={fitMode}
+                    onChange={(e) => setFitMode(e.target.value as FindReplaceFitMode)}
+                    className="text-xs px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-indigo-500"
+                    title="Control how text behaves when longer than available space"
+                  >
+                    <option value="fit-to-space">Fit to Space (Prevent Overlap)</option>
+                    <option value="keep-size">Keep Original Size (May Overlap)</option>
+                  </select>
                 </div>
               </div>
 
@@ -374,8 +391,22 @@ export const FindReplaceTool: React.FC = () => {
                           )}
 
                           {occ.collisionWarning && !isConflicting && (
-                            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1" title="Replacement is significantly longer than original">
-                              <AlertTriangle className="w-3 h-3" /> Layout collision warning
+                            <span
+                              className={`text-[11px] font-medium flex items-center gap-1 ${
+                                fitMode === 'fit-to-space'
+                                  ? 'text-sky-600 dark:text-sky-400'
+                                  : 'text-amber-600 dark:text-amber-400'
+                              }`}
+                              title={
+                                fitMode === 'fit-to-space'
+                                  ? `Auto-fitted to ${Math.round((occ.fitScale || 1) * 100)}% scale to fit available slot (${occ.availableWidth?.toFixed(1)} pt)`
+                                  : `Replacement exceeds available space by +${occ.overflowAmount?.toFixed(1)} pt`
+                              }
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              {fitMode === 'fit-to-space'
+                                ? `Auto-fitted (${Math.round((occ.fitScale || 1) * 100)}% size)`
+                                : `Layout collision (+${occ.overflowAmount?.toFixed(1)} pt)`}
                             </span>
                           )}
                         </div>
@@ -388,6 +419,47 @@ export const FindReplaceTool: React.FC = () => {
                   );
                 })}
               </div>
+
+              {/* Layout Collision / Substantial Scaling Warning Callout */}
+              {(() => {
+                const selectedOccurrences = occurrences.filter((o) => selectedIds.has(o.id));
+                const hasKeepSizeCollision = fitMode === 'keep-size' && selectedOccurrences.some((o) => o.collisionWarning);
+                const maxOverflow = Math.max(0, ...selectedOccurrences.map((o) => o.overflowAmount || 0));
+                const minScale = Math.min(1, ...selectedOccurrences.map((o) => o.fitScale || 1));
+                const hasSubstantialScaling = fitMode === 'fit-to-space' && minScale < 0.75;
+
+                if (hasKeepSizeCollision) {
+                  return (
+                    <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">Layout Overflow Warning (Keep Original Size):</p>
+                        <p className="mt-0.5 leading-relaxed text-amber-800 dark:text-amber-300">
+                          One or more replacement strings are longer than the original text (+{maxOverflow.toFixed(1)} pt) and may overlap adjacent content in the document.
+                          You can proceed with unscaled text, or switch to <strong>Fit to Space</strong> above to prevent collision.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (hasSubstantialScaling) {
+                  return (
+                    <div className="p-3.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 rounded-xl text-xs text-sky-900 dark:text-sky-200 flex items-start gap-2.5">
+                      <Info className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">Substantial Scaling Notice (Fit to Space):</p>
+                        <p className="mt-0.5 leading-relaxed text-sky-800 dark:text-sky-300">
+                          One or more replacements require downscaling to {Math.round(minScale * 100)}% of original size to avoid overlapping adjacent content.
+                          You can proceed with scaled text, or switch to <strong>Keep Original Size</strong> above to maintain full typography.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
 
               {/* Action Bar */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">

@@ -1,5 +1,6 @@
 import {
   PDFDocument,
+  PDFFont,
   rgb,
   StandardFonts,
 } from 'pdf-lib';
@@ -14,6 +15,86 @@ import type {
 import { PdfError } from '../types/engine';
 import { PdfEngine } from './pdf-engine';
 
+export function mapFontNameToStandardFont(fontName?: string): StandardFonts {
+  const lower = (fontName || '').toLowerCase();
+  if (lower.includes('courier') || lower.includes('mono') || lower.includes('consolas')) {
+    if (lower.includes('bold')) return StandardFonts.CourierBold;
+    if (lower.includes('oblique') || lower.includes('italic')) return StandardFonts.CourierOblique;
+    return StandardFonts.Courier;
+  }
+  if (lower.includes('times') || lower.includes('serif') || lower.includes('roman') || lower.includes('georgia')) {
+    if (lower.includes('bold')) return StandardFonts.TimesRomanBold;
+    if (lower.includes('italic')) return StandardFonts.TimesRomanItalic;
+    return StandardFonts.TimesRoman;
+  }
+  if (lower.includes('bold') || lower.includes('heavy') || lower.includes('black')) {
+    return StandardFonts.HelveticaBold;
+  }
+  if (lower.includes('oblique') || lower.includes('italic')) {
+    return StandardFonts.HelveticaOblique;
+  }
+  return StandardFonts.Helvetica;
+}
+
+class FontMetricResolver {
+  private static instance: FontMetricResolver;
+  private fontsPromise: Promise<{
+    helvetica: PDFFont;
+    helveticaBold: PDFFont;
+    helveticaOblique: PDFFont;
+    times: PDFFont;
+    courier: PDFFont;
+  }> | null = null;
+
+  public static getInstance(): FontMetricResolver {
+    if (!FontMetricResolver.instance) {
+      FontMetricResolver.instance = new FontMetricResolver();
+    }
+    return FontMetricResolver.instance;
+  }
+
+  private async getFonts() {
+    if (!this.fontsPromise) {
+      this.fontsPromise = (async () => {
+        const doc = await PDFDocument.create();
+        const [helvetica, helveticaBold, helveticaOblique, times, courier] = await Promise.all([
+          doc.embedFont(StandardFonts.Helvetica),
+          doc.embedFont(StandardFonts.HelveticaBold),
+          doc.embedFont(StandardFonts.HelveticaOblique),
+          doc.embedFont(StandardFonts.TimesRoman),
+          doc.embedFont(StandardFonts.Courier),
+        ]);
+        return { helvetica, helveticaBold, helveticaOblique, times, courier };
+      })();
+    }
+    return this.fontsPromise;
+  }
+
+  public async getFontForName(fontName?: string): Promise<PDFFont> {
+    const fonts = await this.getFonts();
+    const stdFont = mapFontNameToStandardFont(fontName);
+    switch (stdFont) {
+      case StandardFonts.Courier:
+      case StandardFonts.CourierBold:
+      case StandardFonts.CourierOblique:
+      case StandardFonts.CourierBoldOblique:
+        return fonts.courier;
+      case StandardFonts.TimesRoman:
+      case StandardFonts.TimesRomanBold:
+      case StandardFonts.TimesRomanItalic:
+      case StandardFonts.TimesRomanBoldItalic:
+        return fonts.times;
+      case StandardFonts.HelveticaBold:
+      case StandardFonts.HelveticaBoldOblique:
+        return fonts.helveticaBold;
+      case StandardFonts.HelveticaOblique:
+        return fonts.helveticaOblique;
+      default:
+        return fonts.helvetica;
+    }
+  }
+}
+
 interface CharCoord {
   char: string;
   charIndex: number;
@@ -22,6 +103,7 @@ interface CharCoord {
   width: number;
   height: number;
   fontSize: number;
+  fontName?: string;
   isUnsupported: boolean;
   item: any;
 }
@@ -193,20 +275,41 @@ export class FindReplaceEngine {
             }
           }
 
-          const avgCharWidth = str.length > 0 ? itemWidth / str.length : 0;
+          const fontResolver = FontMetricResolver.getInstance();
+          const font = await fontResolver.getFontForName(it.fontName);
+          const charWidths: number[] = [];
+          let nominalSum = 0;
 
           for (let c = 0; c < str.length; c++) {
+            let w = 0;
+            try {
+              w = font.widthOfTextAtSize(str[c], fontSize);
+            } catch {
+              w = fontSize * 0.55;
+            }
+            charWidths.push(w);
+            nominalSum += w;
+          }
+
+          // Calibration scale factor ensures sum of glyph widths exactly matches item.width
+          const scaleFactor = nominalSum > 0 ? itemWidth / nominalSum : 1.0;
+
+          let currentX = itemX;
+          for (let c = 0; c < str.length; c++) {
+            const charWidth = charWidths[c] * scaleFactor;
             charList.push({
               char: str[c],
               charIndex: charList.length,
-              x: itemX + c * avgCharWidth,
+              x: currentX,
               y: itemY,
-              width: avgCharWidth,
+              width: charWidth,
               height: itemHeight,
               fontSize,
+              fontName: it.fontName,
               isUnsupported: hasComplexTransform,
               item: it,
             });
+            currentX += charWidth;
           }
         }
 
@@ -253,14 +356,64 @@ export class FindReplaceEngine {
                 status = 'AMBIGUOUS_COORDINATES';
               }
 
-              // Layout collision detection: check if replacement is significantly wider
-              let collisionWarning = false;
-              if (replaceText.length > 0 && status === 'VALID') {
-                const avgGlyphWidth = matchWidth / Math.max(1, searchQuery.length);
-                const estReplacementWidth = replaceText.length * avgGlyphWidth;
-                if (estReplacementWidth > matchWidth * 1.25) {
-                  collisionWarning = true;
+              // Scan forward for next visible non-whitespace glyph on this line
+              let nextObstacleX = Infinity;
+              for (let k = endIndex; k < charList.length; k++) {
+                if (charList[k].char.trim().length > 0) {
+                  nextObstacleX = charList[k].x;
+                  break;
                 }
+              }
+
+              // Compute exact natural width of replacement text in the font to be embedded
+              const fontResolver = FontMetricResolver.getInstance();
+              const targetFont = await fontResolver.getFontForName(first.item?.fontName);
+              let replacementNaturalWidth = 0;
+              if (replaceText.length > 0) {
+                try {
+                  replacementNaturalWidth = targetFont.widthOfTextAtSize(replaceText, matchFontSize);
+                } catch {
+                  replacementNaturalWidth = replaceText.length * (matchFontSize * 0.55);
+                }
+              }
+
+              // Compute natural width of the original matched text in the target font
+              let originalNaturalWidth = matchWidth;
+              try {
+                originalNaturalWidth = targetFont.widthOfTextAtSize(matchedText, matchFontSize);
+              } catch {
+                originalNaturalWidth = matchWidth;
+              }
+
+              // Available width calculation:
+              // Account for actual character positions, bounding boxes, text transforms, and adjacent glyphs.
+              // If an adjacent obstacle exists on the same line:
+              // - If the gap after the match is narrow (e.g. <= matchFontSize * 0.5), it represents word/delimiter spacing
+              //   and cannot be safely consumed without crowding or colliding with the adjacent glyph.
+              // - If expansion room exists, preserve at least a safe buffer before nextObstacleX.
+              let availableWidth = originalNaturalWidth;
+              if (nextObstacleX !== Infinity) {
+                const matchEndX = matchX + matchWidth;
+                const interTokenGap = nextObstacleX - matchEndX;
+                const safeBuffer = Math.max(4.0, matchFontSize * 0.35);
+
+                if (interTokenGap > safeBuffer) {
+                  availableWidth = Math.max(originalNaturalWidth, nextObstacleX - matchX - safeBuffer);
+                } else {
+                  availableWidth = Math.min(originalNaturalWidth, matchWidth);
+                }
+              } else {
+                availableWidth = Math.max(originalNaturalWidth, 612 - 36 - matchX);
+              }
+
+              let overflowAmount = 0;
+              let overflowWarning = false;
+              let fitScale = 1.0;
+
+              if (replaceText.length > 0 && replacementNaturalWidth > availableWidth) {
+                overflowAmount = replacementNaturalWidth - availableWidth;
+                overflowWarning = overflowAmount > 0.5;
+                fitScale = Math.min(1.0, availableWidth / replacementNaturalWidth);
               }
 
               // Create contextual snippet
@@ -284,10 +437,16 @@ export class FindReplaceEngine {
                 width: matchWidth,
                 height: matchHeight,
                 fontSize: matchFontSize,
+                fontName: first.item?.fontName,
+                availableWidth,
+                replacementNaturalWidth,
+                fitScale,
+                overflowAmount,
+                overflowWarning,
                 rotation: pageRotation,
                 snippet: rawSnippet,
                 status,
-                collisionWarning,
+                collisionWarning: overflowWarning,
                 selected: status === 'VALID',
                 lineIndex: lineIdx,
                 startCharIdx: foundIdx,
@@ -440,21 +599,30 @@ export class FindReplaceEngine {
 
     // Load PDF with pdf-lib to apply visual patches and replacement text
     const doc = await PDFDocument.load(fileData);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fitMode = options.fitMode ?? 'fit-to-space';
 
     const bgCol = options.backgroundColor ?? { r: 255, g: 255, b: 255 };
     const patchColor = rgb(bgCol.r / 255, bgCol.g / 255, bgCol.b / 255);
-    const textColor = rgb(0.1, 0.1, 0.1);
+    const textColor = rgb(0, 0, 0);
+
+    const embeddedFonts = new Map<StandardFonts, PDFFont>();
 
     for (const occ of occurrencesToReplace) {
       const page = doc.getPage(occ.pageIndex);
       const fontSize = occ.fontSize;
 
+      // Embed matching font style
+      const stdFont = mapFontNameToStandardFont(occ.fontName);
+      if (!embeddedFonts.has(stdFont)) {
+        embeddedFonts.set(stdFont, await doc.embedFont(stdFont));
+      }
+      const font = embeddedFonts.get(stdFont)!;
+
       // Draw opaque background patch to occlude original text visually
-      const patchX = occ.x - 0.5;
+      const patchX = Math.max(0, occ.x - 0.5);
       const patchY = occ.y - fontSize * 0.25;
       const patchWidth = occ.width + 1.0;
-      const patchHeight = Math.max(occ.height, fontSize * 1.2);
+      const patchHeight = Math.max(occ.height, fontSize * 1.25);
 
       page.drawRectangle({
         x: patchX,
@@ -464,13 +632,19 @@ export class FindReplaceEngine {
         color: patchColor,
       });
 
+      // Calculate effective font size based on fitMode
+      let drawFontSize = fontSize;
+      if (fitMode === 'fit-to-space' && occ.fitScale && occ.fitScale < 1.0) {
+        drawFontSize = fontSize * occ.fitScale;
+      }
+
       // Stamp replacement text at original baseline
       const textToDraw = occ.replaceText !== undefined ? occ.replaceText : options.replaceText ?? '';
       if (textToDraw.length > 0) {
         page.drawText(textToDraw, {
           x: occ.x,
           y: occ.y,
-          size: fontSize,
+          size: drawFontSize,
           font,
           color: textColor,
         });

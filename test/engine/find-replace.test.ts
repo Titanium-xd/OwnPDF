@@ -289,4 +289,203 @@ describe('FindReplaceEngine PoC & Validation', () => {
     expect(resolvedResult.replacedCount).toBe(1);
     expect(resolvedResult.skippedCount).toBe(1);
   });
+
+  describe('Layout Preservation & Real Fixture Regressions', () => {
+    const createLabManualPdf = async () => {
+      const doc = await PDFDocument.create();
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+      const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+      const page = doc.addPage([600, 400]);
+
+      page.drawText('Data Analysis & Visualization Lab Manual', {
+        x: 120,
+        y: 350,
+        size: 16,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(
+        'Enrollment: 240101027285 | Name: Yash Tank | Course: B.Tech. CSE | Semester:5C2',
+        {
+          x: 30,
+          y: 320,
+          size: 11,
+          font: font,
+          color: rgb(0, 0, 0),
+        }
+      );
+
+      return doc.save();
+    };
+
+    it('accurately positions enrollment number avoiding double-digit overlap', async () => {
+      const pdfBytes = await createLabManualPdf();
+
+      // Search for 240101027285
+      const matches = await engine.searchPdfText(pdfBytes, '240101027285', {
+        replaceText: '2240101027254',
+      });
+
+      expect(matches.length).toBe(1);
+      const m = matches[0];
+      expect(m.status).toBe('VALID');
+
+      // Calibrated X must be within 0.5pt of true font-metric position 88.14 pt (not drifting to 94 pt!)
+      expect(Math.abs(m.x - 88.14)).toBeLessThan(1.0);
+      // Width must be calibrated to ~73.39 pt (not truncated to 64 pt!)
+      expect(Math.abs(m.width - 73.39)).toBeLessThan(1.5);
+
+      // Perform replacement
+      const result = await engine.replacePdfText(pdfBytes, {
+        searchQuery: '240101027285',
+        replaceText: '2240101027254',
+      });
+
+      expect(result.replacedCount).toBe(1);
+
+      // Inspect output PDF via PDF.js to verify zero double digits or corruption
+      const repTask = pdfjsLib.getDocument({ data: new Uint8Array(result.pdfData) });
+      const repDoc = await repTask.promise;
+      const repPage = await repDoc.getPage(1);
+      const repContent = await repPage.getTextContent();
+      const repItems = (repContent.items as any[]).filter((it) => it.str && it.str.trim().length > 0);
+
+      // Find the replacement item
+      const repItem = repItems.find((it) => it.str === '2240101027254');
+      expect(repItem).toBeDefined();
+      // Replacement starts precisely at the original match X coordinate (no 6pt rightward drift causing double-digit 22...)
+      expect(Math.abs(repItem.transform[4] - m.x)).toBeLessThan(0.1);
+      expect(repItem.transform[0]).toBeGreaterThanOrEqual(10.0); // Readable font size
+
+      // Adjacent text before and after enrollment number remains intact and legible
+      const hasEnrollmentLabel = repItems.some((it) => it.str.includes('Enrollment:'));
+      expect(hasEnrollmentLabel).toBe(true);
+      const hasNameLabel = repItems.some((it) => it.str.includes('| Name:'));
+      expect(hasNameLabel).toBe(true);
+    });
+
+    it('replaces Yash Tank with Parva Trivedi without overlapping | Course: B.Tech. CSE', async () => {
+      const pdfBytes = await createLabManualPdf();
+
+      // 1. Search for Yash Tank with Parva Trivedi
+      const matches = await engine.searchPdfText(pdfBytes, 'Yash Tank', {
+        replaceText: 'Parva Trivedi',
+      });
+
+      expect(matches.length).toBe(1);
+      const m = matches[0];
+      expect(m.status).toBe('VALID');
+      expect(m.overflowWarning).toBe(true);
+      expect(m.overflowAmount).toBeGreaterThan(5.0); // Parva Trivedi is wider by ~13 pt
+      expect(m.fitScale).toBeLessThan(1.0); // Needs scaling in fit-to-space mode
+
+      // 2. Execute replacement in fit-to-space mode
+      const result = await engine.replacePdfText(pdfBytes, {
+        searchQuery: 'Yash Tank',
+        replaceText: 'Parva Trivedi',
+        fitMode: 'fit-to-space',
+      });
+
+      expect(result.replacedCount).toBe(1);
+
+      // Verify output in PDF.js
+      const repTask = pdfjsLib.getDocument({ data: new Uint8Array(result.pdfData) });
+      const repDoc = await repTask.promise;
+      const repPage = await repDoc.getPage(1);
+      const repContent = await repPage.getTextContent();
+      const repItems = (repContent.items as any[]).filter((it) => it.str && it.str.trim().length > 0);
+
+      const repItem = repItems.find((it) => it.str === 'Parva Trivedi');
+      expect(repItem).toBeDefined();
+
+      // Ensure the end of the replacement string does NOT exceed available space or overlap adjacent content
+      const repEndX = repItem.transform[4] + repItem.width;
+      // The adjacent '|' obstacle starts at 262.14 pt; replacement ends cleanly before it
+      expect(repEndX).toBeLessThanOrEqual(259.0);
+      expect(repEndX).toBeLessThan(262.14);
+
+      // Adjacent text '| Course: B.Tech. CSE' remains intact and legible
+      const hasCourse = repItems.some((it) => it.str.includes('| Course: B.Tech. CSE'));
+      expect(hasCourse).toBe(true);
+    });
+
+    it('honors keep-size mode and reports collision without silently shrinking', async () => {
+      const pdfBytes = await createLabManualPdf();
+
+      const result = await engine.replacePdfText(pdfBytes, {
+        searchQuery: 'Yash Tank',
+        replaceText: 'Parva Trivedi',
+        fitMode: 'keep-size',
+      });
+
+      expect(result.replacedCount).toBe(1);
+      expect(result.collisionCount).toBe(1);
+
+      // Inspect output: text was drawn at full original size in keep-size mode
+      const repTask = pdfjsLib.getDocument({ data: new Uint8Array(result.pdfData) });
+      const repDoc = await repTask.promise;
+      const repPage = await repDoc.getPage(1);
+      const repContent = await repPage.getTextContent();
+      const repItem = (repContent.items as any[]).find((it) => it.str === 'Parva Trivedi');
+      expect(repItem).toBeDefined();
+      expect(repItem.transform[0]).toBe(11); // Font scale remains uncompressed 11
+    });
+
+    it('handles shorter replacement text cleanly preserving surrounding content', async () => {
+      const pdfBytes = await createLabManualPdf();
+
+      // Replace 12-digit number with 5-digit number
+      const result = await engine.replacePdfText(pdfBytes, {
+        searchQuery: '240101027285',
+        replaceText: '98765',
+      });
+
+      expect(result.replacedCount).toBe(1);
+
+      const repTask = pdfjsLib.getDocument({ data: new Uint8Array(result.pdfData) });
+      const repDoc = await repTask.promise;
+      const repPage = await repDoc.getPage(1);
+      const repContent = await repPage.getTextContent();
+      const repItem = (repContent.items as any[]).find((it) => it.str === '98765');
+      expect(repItem).toBeDefined();
+      expect(repItem.transform[0]).toBe(11); // No downscaling required for shorter replacement
+
+      // Surrounding content remains intact and legible
+      const hasEnrollment = (repContent.items as any[]).some((it) => it.str?.includes('Enrollment:'));
+      expect(hasEnrollment).toBe(true);
+      const hasName = (repContent.items as any[]).some((it) => it.str?.includes('Name: Yash Tank'));
+      expect(hasName).toBe(true);
+    });
+
+    it('replaces both name and enrollment number in a single multi-rule pass', async () => {
+      const pdfBytes = await createLabManualPdf();
+
+      const rules = [
+        { id: 'r1', searchQuery: 'Yash Tank', replaceText: 'Parva Trivedi' },
+        { id: 'r2', searchQuery: '240101027285', replaceText: '2240101027254' },
+      ];
+
+      const result = await engine.replacePdfText(pdfBytes, {
+        rules,
+        fitMode: 'fit-to-space',
+      });
+
+      expect(result.totalMatches).toBe(2);
+      expect(result.replacedCount).toBe(2);
+      expect(result.ruleReports?.length).toBe(2);
+      expect(result.ruleReports?.[0].replacedCount).toBe(1);
+      expect(result.ruleReports?.[1].replacedCount).toBe(1);
+
+      const repTask = pdfjsLib.getDocument({ data: new Uint8Array(result.pdfData) });
+      const repDoc = await repTask.promise;
+      const repPage = await repDoc.getPage(1);
+      const repContent = await repPage.getTextContent();
+      const strings = (repContent.items as any[]).map((it) => it.str);
+      expect(strings).toContain('Parva Trivedi');
+      expect(strings).toContain('2240101027254');
+      // Adjacent content is preserved and legible
+      expect(strings.some((s) => s.includes('| Course: B.Tech. CSE'))).toBe(true);
+    });
+  });
 });
